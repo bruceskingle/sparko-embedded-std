@@ -26,4 +26,6 @@ The conventions for builders are that they
 - have methods which either return their result directly (if there are no failure scenarios) or return an ```anyhow::Result<>``` of their result.
 
 The following implementations are available which use this crate:
-- sparko-esp-std for ESP32 SoC based boards
+- [sparko-esp-std](https://github.com/bruceskingle/sparko-esp-std) for ESP32 SoC based boards.
+
+Example applications for various boards are available at [sparko-embedded-examples](https://github.com/bruceskingle/sparko-embedded-example) on GitHub.

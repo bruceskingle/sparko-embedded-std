@@ -1,6 +1,4 @@
 use indexmap::IndexMap;
-use log::info;
-use std::{sync::{Arc, Mutex}};
 
 use anyhow::anyhow;
 
@@ -77,10 +75,10 @@ impl TypedValue {
 
     pub fn to_none(&self) -> Self {
         match self {
-            TypedValue::String(len, val) => TypedValue::String(*len, None),
-            TypedValue::Int32(val) => TypedValue::Int32(None),
-            TypedValue::Int64(val) => TypedValue::Int64(None),
-            TypedValue::Bool(val) => TypedValue::Bool(false),
+            TypedValue::String(len, _) => TypedValue::String(*len, None),
+            TypedValue::Int32(_) => TypedValue::Int32(None),
+            TypedValue::Int64(_) => TypedValue::Int64(None),
+            TypedValue::Bool(_) => TypedValue::Bool(false),
             TypedValue::TimeZone(_) => TypedValue::TimeZone(TimeZone::Utc),
         }
     }

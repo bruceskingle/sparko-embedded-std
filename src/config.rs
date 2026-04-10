@@ -1,8 +1,10 @@
+use std::str::FromStr;
+use croner::Cron;
 use indexmap::IndexMap;
 
 use anyhow::anyhow;
 
-use crate::tz::TimeZone;
+use crate::{problem::ProblemId, tz::TimeZone};
 
 #[derive(Clone, Copy)]
 pub enum EnabledState {
@@ -28,13 +30,32 @@ impl From<bool> for EnabledState {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum TypedValue {
     String(usize, Option<String>),
     Int32(Option<i32>),
     Int64(Option<i64>),
     Bool(bool),
     TimeZone(TimeZone),
+    Cron(Option<Cron>),
+}
+
+impl std::fmt::Debug for TypedValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypedValue::Cron(Some(c)) => {
+                write!(f, "Cron({})", c)
+            }
+            TypedValue::Cron(None) => {
+                write!(f, "Cron(None)")
+            }
+            TypedValue::String(len, val) => write!(f, "String({}, {:?})", len, val),
+            TypedValue::Int32(val) => write!(f, "Int32({:?})", val),
+            TypedValue::Int64(val) => write!(f, "Int64({:?})", val),
+            TypedValue::Bool(val) => write!(f, "Bool({:?})", val),
+            TypedValue::TimeZone(val) => write!(f, "TimeZone({:?})", val),
+        }
+    }
 }
 
 impl TypedValue {
@@ -58,7 +79,8 @@ impl TypedValue {
             TypedValue::Int32(val) => val.is_none(),
             TypedValue::Int64(val) => val.is_none(),
             TypedValue::Bool(_) => false, // Bool is never None, it defaults to false
-            TypedValue::TimeZone(_) => false, // TimeZone is never None, it defaults to a specific timezone
+            TypedValue::TimeZone(_) => false, // TimeZone is never None, it defaults to UTC
+            TypedValue::Cron(val) => val.is_none(),
         }
     }
     
@@ -69,6 +91,12 @@ impl TypedValue {
             TypedValue::Int64(Some(val)) => val.to_string(),
             TypedValue::Bool(val) => val.to_string(),
             TypedValue::TimeZone(tz) => tz.to_str().to_string(),
+            TypedValue::Cron(opt_cron) =>   if let Some(cron) = opt_cron {
+                                                            cron.pattern.to_string()
+                                                        }
+                                                        else {
+                                                            "".to_string()
+                                                        },
             _ => "".to_string(),
         }
     }
@@ -80,6 +108,7 @@ impl TypedValue {
             TypedValue::Int64(_) => TypedValue::Int64(None),
             TypedValue::Bool(_) => TypedValue::Bool(false),
             TypedValue::TimeZone(_) => TypedValue::TimeZone(TimeZone::Utc),
+            TypedValue::Cron(_) => TypedValue::Cron(None),
         }
     }
     
@@ -105,6 +134,7 @@ impl TypedValue {
                     anyhow::bail!("Invalid timezone value: {}", str_val);
                 }
             },
+            TypedValue::Cron(_) => TypedValue::Cron(Some(Cron::from_str(str_val)?)),
         })
     }
 }
@@ -114,6 +144,13 @@ impl TypedValue {
 pub struct ConfigValue {
     pub value: TypedValue,
     pub required: bool,
+    pub problem_id: ProblemId,
+}
+
+impl ConfigValue {
+    pub fn new(value: TypedValue, required: bool) -> Self {
+        ConfigValue { value, required, problem_id: None }
+    }
 }
 
 

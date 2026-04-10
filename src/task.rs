@@ -37,6 +37,7 @@ impl TaskManagerBuilder
         let schedule = Cron::from_str(schedule_spec)?;
         // We are doing this here to validate the schedule spec early and avoid adding tasks with invalid schedules to the manager
         let next_event = schedule.find_next_occurrence(&Local::now(), false)?;
+        info!("Task {} added with schedule {} which means {}", task.name(), schedule_spec, schedule.describe());
         self.tasks.push(TaskHolder{task, schedule, next_event});
         Ok(())
     }

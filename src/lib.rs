@@ -4,6 +4,7 @@ use std::time::Duration;
 pub mod tz;
 pub mod task;
 pub mod config;
+pub mod problem;
 
 pub trait SparkoEmbeddedStd {
 }

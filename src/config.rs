@@ -6,31 +6,10 @@ use anyhow::anyhow;
 
 use crate::{problem::ProblemId, tz::TimeZone};
 
-#[derive(Clone, Copy)]
-pub enum EnabledState {
-    Enabled,
-    Disabled,
-    Required,
-}
-
-impl EnabledState {
-    pub fn is_enabled(&self) -> bool {
-        matches!(self, EnabledState::Enabled | EnabledState::Required)
-    }
-}
-
-impl From<bool> for EnabledState {
-    fn from(value: bool) -> Self {
-        if value {
-            EnabledState::Enabled
-        } else {
-            EnabledState::Disabled
-        }
-    }
-}
 
 
-#[derive(PartialEq)]
+
+#[derive(Clone, PartialEq)]
 pub enum TypedValue {
     String(usize, Option<String>),
     Int32(Option<i32>),
@@ -139,36 +118,54 @@ impl TypedValue {
     }
 }
 
+#[derive(Debug)]
+pub struct Config {
+    pub enabled: EnabledState,
+    pub map: IndexMap<String, TypedValue>,
+}
+
+impl Config {
+
+    // should be called get_required_as_string
+    pub fn get_valid(&self, key: &str) -> anyhow::Result<String> {
+        if let Some(value) = self.map.get(key) {
+            Ok(value.to_string())
+        }
+        else {
+            Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+}
 
 #[derive(Debug)]
-pub struct ConfigValue {
+pub struct ConfigSpecValue {
     pub value: TypedValue,
     pub required: bool,
     pub problem_id: ProblemId,
 }
 
-impl ConfigValue {
+impl ConfigSpecValue {
     pub fn new(value: TypedValue, required: bool) -> Self {
-        ConfigValue { value, required, problem_id: None }
+        ConfigSpecValue { value, required, problem_id: None }
     }
 }
 
 
-pub struct ConfigBuilder {
-    map: IndexMap<String, ConfigValue>,
+pub struct ConfigSpecBuilder {
+    map: IndexMap<String, ConfigSpecValue>,
 }
 
-impl ConfigBuilder {
+impl ConfigSpecBuilder {
     fn new() -> Self {
         Self { map: IndexMap::new() }
     }
 
-    pub fn with(mut self, name: String, value: ConfigValue) -> anyhow::Result<Self> {
+    pub fn with(mut self, name: String, value: ConfigSpecValue) -> anyhow::Result<Self> {
         self.insert(name, value)?;
         Ok(self)
     }
 
-    pub fn insert(&mut self, name: String, value: ConfigValue) -> anyhow::Result<()> {
+    pub fn insert(&mut self, name: String, value: ConfigSpecValue) -> anyhow::Result<()> {
         if self.map.contains_key(&name) {
             anyhow::bail!("Duplicate config name: {}", name);
         }
@@ -185,23 +182,23 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    pub fn build(mut self) -> Config {
+    pub fn build(mut self) -> ConfigSpec {
         self.map.shrink_to_fit();
 
-        Config {
+        ConfigSpec {
             map: self.map,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Config {
-    pub map: IndexMap<String, ConfigValue>,
+pub struct ConfigSpec {
+    pub map: IndexMap<String, ConfigSpecValue>,
 }
 
-impl Config {
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::new()
+impl ConfigSpec {
+    pub fn builder() -> ConfigSpecBuilder {
+        ConfigSpecBuilder::new()
     }
 
     pub fn is_valid(&self, config_name: &str) -> bool {
@@ -220,6 +217,42 @@ impl Config {
         }
         else {
             Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+}
+
+
+pub trait ConfigStoreFactory {
+    fn create(&self, name: &str) -> anyhow::Result<impl ConfigStore>;
+}
+
+pub trait ConfigStore {
+    fn erase_all(&self) -> anyhow::Result<()>;
+    fn load(&self, name: &str, config_value: &mut ConfigSpecValue);
+    fn save(&self, name: &str, config_value: &mut ConfigSpecValue, str_value: &str) -> anyhow::Result<()>;
+    fn remove(&self, name: &str, config_value: &mut ConfigSpecValue) -> anyhow::Result<()>;
+}
+
+
+#[derive(Clone, Copy, Debug)]
+pub enum EnabledState {
+    Enabled,
+    Disabled,
+    Required,
+}
+
+impl EnabledState {
+    pub fn is_enabled(&self) -> bool {
+        matches!(self, EnabledState::Enabled | EnabledState::Required)
+    }
+}
+
+impl From<bool> for EnabledState {
+    fn from(value: bool) -> Self {
+        if value {
+            EnabledState::Enabled
+        } else {
+            EnabledState::Disabled
         }
     }
 }

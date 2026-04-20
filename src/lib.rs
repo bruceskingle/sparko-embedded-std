@@ -5,6 +5,7 @@ pub mod tz;
 pub mod task;
 pub mod config;
 pub mod problem;
+pub mod http_server;
 
 pub trait SparkoEmbeddedStd {
 }

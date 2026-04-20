@@ -162,16 +162,6 @@ impl<'a> Iterator for ProblemIter<'a> {
     }
 }
 
-// impl IntoIterator for ProblemManager {
-//     type Item = String;
-//     type IntoIter = std::vec::IntoIter<String>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         let data = self.data.into_inner().unwrap();
-//         data.problems.into_iter().filter_map(|problem| problem).collect::<Vec<_>>().into_iter()
-//     }
-// }
-
 impl<'a> IntoIterator for &'a ProblemManager {
     type Item = &'a str;
     type IntoIter = ProblemIter<'a>;

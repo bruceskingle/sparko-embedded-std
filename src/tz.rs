@@ -1,5 +1,3 @@
-// use crate::config::ConfigSerializable;
-
 pub const TIMEZONE_LEN: usize = 64;
 pub const TZ_EUROPE_LONDON: &str = "Europe/London";
 pub const TZ_EUROPE_BERLIN: &str = "Europe/Berlin";
@@ -106,46 +104,10 @@ pub const ALL: &'static [TimeZone] = &[
     TimeZone::Utc,
 ];
 
-// pub const ALL_TIMEZONE_STRS: &[&str] = &[
-//     TZ_EUROPE_LONDON,
-//     TZ_EUROPE_BERLIN,
-//     TZ_EUROPE_PARIS,
-//     TZ_EUROPE_MADRID,
-//     TZ_EUROPE_ROME,
-
-//     TZ_AMERICA_NEW_YORK,
-//     TZ_AMERICA_CHICAGO,
-//     TZ_AMERICA_DENVER,
-//     TZ_AMERICA_LOS_ANGELES,
-
-//     TZ_AMERICA_TORONTO,
-//     TZ_AMERICA_VANCOUVER,
-
-//     TZ_AUSTRALIA_SYDNEY,
-//     TZ_AUSTRALIA_MELBOURNE,
-//     TZ_AUSTRALIA_BRISBANE,
-
-//     TZ_PACIFIC_AUCKLAND,
-
-//     TZ_ASIA_TOKYO,
-//     TZ_ASIA_SHANGHAI,
-//     TZ_ASIA_KOLKATA,
-//     TZ_ASIA_SINGAPORE,
-//     TZ_ASIA_DUBAI,
-
-//     TZ_AMERICA_SAO_PAULO,
-
-//     TZ_UTC,
-// ];
-
 impl /*ConfigSerializable for*/ TimeZone {
     pub fn iter() -> impl Iterator<Item = &'static TimeZone> {
         ALL.iter()
     }
-
-    // pub fn iter_strs() -> impl Iterator<Item = &'static str> {
-    //     ALL_TIMEZONE_STRS.iter()
-    // }
 
     pub fn to_posix_tz(&self) -> &'static str {
         match self {

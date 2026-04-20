@@ -1,6 +1,5 @@
 use indexmap::IndexMap;
 use std::io::Write;
-use std::io::Read;
 
 
 /*
@@ -31,130 +30,6 @@ pub enum HttpMethod {
     Post,
 }
 
-// pub trait Request : Read {
-//     // type Resp: Response;
-
-//     // fn into_ok_response(self) -> anyhow::Result<impl Response>;
-//     // fn into_ok_response(self: Box<Self>) -> anyhow::Result<Box<dyn Response>>;
-//     type Resp<'a>: Response
-//     where
-//         Self: 'a;
-
-//     fn into_ok_response<'a>(self) -> anyhow::Result<Self::Resp<'a>>
-//     where
-//         Self: 'a;
-
-// }
-
-// pub trait Response: Write {
-
-// }
-
-// // pub type Handler = Box<dyn Fn(Box<dyn Request>) -> anyhow::Result<()> + Send + Sync + 'static>;
-// pub type Handler =
-//     Box<
-//         dyn for<'r> Fn(
-//                 Box<dyn Request + 'r>
-//             ) -> anyhow::Result<()>
-//         + Send
-//         + Sync
-//         + 'static
-//     >;
-
-
-// pub trait HttpServerManager {
-//     // type Req: Request;
-    
-
-//     fn fn_handler(
-//         &mut self,
-//         uri: &str,
-//         method: HttpMethod,
-//         handler: Handler,
-//     ) -> anyhow::Result<()>
-//     ;
-// }
-
-// pub fn call_it(req: Box<dyn Request>) -> anyhow::Result<()> {
-//     let mut resp = req.into_ok_response()?;
-
-//     resp.write(b"Hello")?;
-
-//     Ok(())
-// }
-
-// pub fn use_it(server: Box<&mut dyn HttpServerManager>)  -> anyhow::Result<()>{
-//     server.fn_handler("/", HttpMethod::Get, Box::new(move |req| {
-//         let mut resp = req.into_ok_response()?;
-
-//         resp.write(b"Hello")?;
-//         Ok(())
-//     }))?;
-
-//     Ok(())
-// }
-
-// pub struct HttpServerWrapper<S: HttpServerManager> {
-//     server: S,
-// }
-
-// impl<S: HttpServerManager> HttpServerWrapper<S> {
-//     pub fn new(server: S) -> Self {
-//         HttpServerWrapper { server }
-//     }
-// }
-
-// impl<S: HttpServerManager> HttpServerManager for HttpServerWrapper<S> {
-//     fn handle<F>(
-//         &mut self,
-//         uri: &str,
-//         method: HttpMethod,
-//         f: F,
-//     ) -> anyhow::Result<()>
-//     where
-//         F: for<'r> Fn(&mut dyn Response) -> anyhow::Result<()> + Send + 'static {
-//         self.server.handle(uri, method, f)
-//     }
-
-//     fn handle_post_form<F>(
-//         &mut self,
-//         uri: &str,
-//         f: F,
-//     ) -> anyhow::Result<()>
-//     where
-//         F: for<'r> Fn(&mut dyn Response, IndexMap<String, String>) -> anyhow::Result<()> + Send + 'static {
-//         self.server.handle_post_form(uri, f)
-//     }
-
-//     fn handle_status<F>(
-//         &mut self,
-//         uri: &str,
-//         method: HttpMethod,
-//         status: u16,
-//         message: Option<&'static str>,
-//         headers: &'static [(&'static str, &'static str)],
-//         f: F,
-//     ) -> anyhow::Result<()>
-//     where
-//         F: for<'r> Fn(&mut dyn Response) -> anyhow::Result<()> + Send + 'static {
-//         self.server.handle_status(uri, method, status, message, headers, f)
-//     }
-// }
-
-// pub struct Responder {
-//     pub status: u16,
-//     pub message: Option<&'static str>,
-//     pub headers: &'static [(&'static str, &'static str)],
-//     pub f: Box<dyn Fn(&mut dyn Response) -> anyhow::Result<()> + Send>,
-// }
-
-// pub struct Discriminator<T> {
-//     pub status: u16,
-//     pub message: Option<&'static str>,
-//     pub headers: &'static [(&'static str, &'static str)],
-//     pub discriminator: T,
-// }
-
 pub trait HttpServerManager {
     fn handle(
         &mut self,
@@ -181,21 +56,6 @@ pub trait HttpServerManager {
         headers: &'static [(&'static str, &'static str)],
         f: Box<dyn Fn(&mut dyn Write) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()>;
-
-    // fn responder(
-    //     &mut self,
-    //     uri: &str,
-    //     method: HttpMethod,
-    //     responder: dyn Fn() -> anyhow::Result<Responder> + Send,
-    // ) -> anyhow::Result<()>;
-
-    // fn discriminator<T: Clone + 'static>(
-    //     &mut self,
-    //     uri: &str,
-    //     method: HttpMethod,
-    //     discriminator: Box<dyn Fn() -> anyhow::Result<Discriminator<T>> + Send>,
-    //     f: Box<dyn Fn(&mut dyn Response, T) -> anyhow::Result<()> + Send>,
-    // ) -> anyhow::Result<()>;
     
     fn init_common_pages(&mut self) -> anyhow::Result<()> {
         self.handle_status(
@@ -219,5 +79,3 @@ button:active { background: #005bb5; }
         Ok(())
     }
 }
-
-// type Handler: for<'r> Fn(dyn &mut Request) -> anyhow::Result<()> + Send + 'static;

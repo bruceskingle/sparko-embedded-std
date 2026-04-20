@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 
 use anyhow::anyhow;
 
-use crate::{http_server::HttpServerManager, problem::ProblemId, tz::TimeZone};
+use crate::{problem::ProblemId, tz::TimeZone};
 
 
 
@@ -38,20 +38,6 @@ impl std::fmt::Debug for TypedValue {
 }
 
 impl TypedValue {
-    // pub fn is_type_compatible(&self, other: &TypedValue) -> bool {
-    //     match self {
-    //         TypedValue::String(len, _value) => {
-    //             if let TypedValue::String(other_len, _) = other {
-    //                 return len == other_len;
-    //             }
-    //             false
-    //         },
-    //         TypedValue::Int32(_) => matches!(other, TypedValue::Int32(_)),
-    //         TypedValue::Int64(_) => matches!(other, TypedValue::Int64(_) ),
-    //         TypedValue::Bool(_) => matches!(other, TypedValue::Bool(_)),
-    //     }
-    // }
-
     pub fn is_none(&self) -> bool {
         match self {
             TypedValue::String(_len, val) => val.is_none(),

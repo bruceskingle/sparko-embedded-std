@@ -209,14 +209,15 @@ impl ConfigSpec {
 
 
 pub trait ConfigStoreFactory {
-    fn create(&self, name: &str) -> anyhow::Result<impl ConfigStore>;
+    fn create(&self, name: String, internal: bool) -> anyhow::Result<Box<dyn ConfigStore>>;
 }
 
-pub trait ConfigStore {
+pub trait ConfigStore: Sync + Send {
     fn erase_all(&self) -> anyhow::Result<()>;
     fn load(&self, name: &str, config_value: &mut ConfigSpecValue);
     fn save(&self, name: &str, config_value: &mut ConfigSpecValue, str_value: &str) -> anyhow::Result<()>;
     fn remove(&self, name: &str, config_value: &mut ConfigSpecValue) -> anyhow::Result<()>;
+    fn load_enabled_state(&self) -> anyhow::Result<EnabledState>;
 }
 
 

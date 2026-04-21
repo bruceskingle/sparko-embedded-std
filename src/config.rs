@@ -3,6 +3,7 @@ use croner::Cron;
 use indexmap::IndexMap;
 
 use anyhow::anyhow;
+use log::info;
 
 use crate::{problem::ProblemId, tz::TimeZone};
 
@@ -46,6 +47,15 @@ impl TypedValue {
             TypedValue::Bool(_) => false, // Bool is never None, it defaults to false
             TypedValue::TimeZone(_) => false, // TimeZone is never None, it defaults to UTC
             TypedValue::Cron(val) => val.is_none(),
+        }
+    }
+
+    pub fn to_heapless<const N: usize>(&self) -> anyhow::Result<heapless::String<N>>{
+        if let TypedValue::String(_len, Some(val)) = self {
+            Ok(heapless::String::<N>::try_from(val.as_str())?)
+        }
+        else {
+            Ok(heapless::String::<N>::try_from(self.to_string().as_str())?)
         }
     }
     
@@ -111,11 +121,20 @@ pub struct Config {
 }
 
 impl Config {
-
     // should be called get_required_as_string
     pub fn get_valid(&self, key: &str) -> anyhow::Result<String> {
         if let Some(value) = self.map.get(key) {
             Ok(value.to_string())
+        }
+        else {
+            Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+
+
+    pub fn get_required_as_heapless<const N: usize>(&self, key: &str) -> anyhow::Result<heapless::String<N>> {
+        if let Some(value) = self.map.get(key) {
+            Ok(value.to_heapless::<N>()?)
         }
         else {
             Err(anyhow!("Config value {} is missing", key))
@@ -187,13 +206,16 @@ impl ConfigSpec {
         ConfigSpecBuilder::new()
     }
 
-    pub fn is_valid(&self, config_name: &str) -> bool {
-        for (name, config_value) in &self.map {
+    pub fn is_valid(&self) -> bool {
+        info!("is_valid():");
+        for (_name, config_value) in &self.map {
+            info!("is_valid(): {}", _name);
             if config_value.required && config_value.value.is_none() {
-                log::error!("Missing required config value: {} in {}", name, config_name);
+                info!("is_valid(): {} IS NOT VALID", _name);
                 return false;
             }
         }
+        info!("is_valid(): OK");
         true
     }
     

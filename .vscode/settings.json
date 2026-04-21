@@ -2,6 +2,7 @@
     "cSpell.words": [
         "Condvar",
         "croner",
+        "heapless",
         "schedulable"
     ]
 }

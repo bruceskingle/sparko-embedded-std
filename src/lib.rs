@@ -4,8 +4,11 @@ use std::time::Duration;
 pub mod tz;
 pub mod task;
 pub mod config;
+pub mod config_manager;
 pub mod problem;
 pub mod http_server;
+pub mod feature;
+pub mod command;
 
 pub trait SparkoEmbeddedStd {
 }

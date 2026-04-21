@@ -1,36 +1,16 @@
-use std::str::FromStr;
+use std::{str::FromStr};
 use croner::Cron;
 use indexmap::IndexMap;
 
 use anyhow::anyhow;
+use log::info;
 
 use crate::{problem::ProblemId, tz::TimeZone};
 
-#[derive(Clone, Copy)]
-pub enum EnabledState {
-    Enabled,
-    Disabled,
-    Required,
-}
-
-impl EnabledState {
-    pub fn is_enabled(&self) -> bool {
-        matches!(self, EnabledState::Enabled | EnabledState::Required)
-    }
-}
-
-impl From<bool> for EnabledState {
-    fn from(value: bool) -> Self {
-        if value {
-            EnabledState::Enabled
-        } else {
-            EnabledState::Disabled
-        }
-    }
-}
 
 
-#[derive(PartialEq)]
+
+#[derive(Clone, PartialEq)]
 pub enum TypedValue {
     String(usize, Option<String>),
     Int32(Option<i32>),
@@ -59,20 +39,6 @@ impl std::fmt::Debug for TypedValue {
 }
 
 impl TypedValue {
-    // pub fn is_type_compatible(&self, other: &TypedValue) -> bool {
-    //     match self {
-    //         TypedValue::String(len, _value) => {
-    //             if let TypedValue::String(other_len, _) = other {
-    //                 return len == other_len;
-    //             }
-    //             false
-    //         },
-    //         TypedValue::Int32(_) => matches!(other, TypedValue::Int32(_)),
-    //         TypedValue::Int64(_) => matches!(other, TypedValue::Int64(_) ),
-    //         TypedValue::Bool(_) => matches!(other, TypedValue::Bool(_)),
-    //     }
-    // }
-
     pub fn is_none(&self) -> bool {
         match self {
             TypedValue::String(_len, val) => val.is_none(),
@@ -81,6 +47,15 @@ impl TypedValue {
             TypedValue::Bool(_) => false, // Bool is never None, it defaults to false
             TypedValue::TimeZone(_) => false, // TimeZone is never None, it defaults to UTC
             TypedValue::Cron(val) => val.is_none(),
+        }
+    }
+
+    pub fn to_heapless<const N: usize>(&self) -> anyhow::Result<heapless::String<N>>{
+        if let TypedValue::String(_len, Some(val)) = self {
+            Ok(heapless::String::<N>::try_from(val.as_str())?)
+        }
+        else {
+            Ok(heapless::String::<N>::try_from(self.to_string().as_str())?)
         }
     }
     
@@ -139,36 +114,63 @@ impl TypedValue {
     }
 }
 
+#[derive(Debug)]
+pub struct Config {
+    pub enabled: EnabledState,
+    pub map: IndexMap<String, TypedValue>,
+}
+
+impl Config {
+    // should be called get_required_as_string
+    pub fn get_valid(&self, key: &str) -> anyhow::Result<String> {
+        if let Some(value) = self.map.get(key) {
+            Ok(value.to_string())
+        }
+        else {
+            Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+
+
+    pub fn get_required_as_heapless<const N: usize>(&self, key: &str) -> anyhow::Result<heapless::String<N>> {
+        if let Some(value) = self.map.get(key) {
+            Ok(value.to_heapless::<N>()?)
+        }
+        else {
+            Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+}
 
 #[derive(Debug)]
-pub struct ConfigValue {
+pub struct ConfigSpecValue {
     pub value: TypedValue,
     pub required: bool,
     pub problem_id: ProblemId,
 }
 
-impl ConfigValue {
+impl ConfigSpecValue {
     pub fn new(value: TypedValue, required: bool) -> Self {
-        ConfigValue { value, required, problem_id: None }
+        ConfigSpecValue { value, required, problem_id: None }
     }
 }
 
 
-pub struct ConfigBuilder {
-    map: IndexMap<String, ConfigValue>,
+pub struct ConfigSpecBuilder {
+    map: IndexMap<String, ConfigSpecValue>,
 }
 
-impl ConfigBuilder {
+impl ConfigSpecBuilder {
     fn new() -> Self {
         Self { map: IndexMap::new() }
     }
 
-    pub fn with(mut self, name: String, value: ConfigValue) -> anyhow::Result<Self> {
+    pub fn with(mut self, name: String, value: ConfigSpecValue) -> anyhow::Result<Self> {
         self.insert(name, value)?;
         Ok(self)
     }
 
-    pub fn insert(&mut self, name: String, value: ConfigValue) -> anyhow::Result<()> {
+    pub fn insert(&mut self, name: String, value: ConfigSpecValue) -> anyhow::Result<()> {
         if self.map.contains_key(&name) {
             anyhow::bail!("Duplicate config name: {}", name);
         }
@@ -185,32 +187,35 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    pub fn build(mut self) -> Config {
+    pub fn build(mut self) -> ConfigSpec {
         self.map.shrink_to_fit();
 
-        Config {
+        ConfigSpec {
             map: self.map,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Config {
-    pub map: IndexMap<String, ConfigValue>,
+pub struct ConfigSpec {
+    pub map: IndexMap<String, ConfigSpecValue>,
 }
 
-impl Config {
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::new()
+impl ConfigSpec {
+    pub fn builder() -> ConfigSpecBuilder {
+        ConfigSpecBuilder::new()
     }
 
-    pub fn is_valid(&self, config_name: &str) -> bool {
-        for (name, config_value) in &self.map {
+    pub fn is_valid(&self) -> bool {
+        info!("is_valid():");
+        for (_name, config_value) in &self.map {
+            info!("is_valid(): {}", _name);
             if config_value.required && config_value.value.is_none() {
-                log::error!("Missing required config value: {} in {}", name, config_name);
+                info!("is_valid(): {} IS NOT VALID", _name);
                 return false;
             }
         }
+        info!("is_valid(): OK");
         true
     }
     
@@ -220,6 +225,43 @@ impl Config {
         }
         else {
             Err(anyhow!("Config value {} is missing", key))
+        }
+    }
+}
+
+
+pub trait ConfigStoreFactory {
+    fn create(&self, name: String, internal: bool) -> anyhow::Result<Box<dyn ConfigStore>>;
+}
+
+pub trait ConfigStore: Sync + Send {
+    fn erase_all(&self) -> anyhow::Result<()>;
+    fn load(&self, name: &str, config_value: &mut ConfigSpecValue);
+    fn save(&self, name: &str, config_value: &mut ConfigSpecValue, str_value: &str) -> anyhow::Result<()>;
+    fn remove(&self, name: &str, config_value: &mut ConfigSpecValue) -> anyhow::Result<()>;
+    fn load_enabled_state(&self) -> anyhow::Result<EnabledState>;
+}
+
+
+#[derive(Clone, Copy, Debug)]
+pub enum EnabledState {
+    Enabled,
+    Disabled,
+    Required,
+}
+
+impl EnabledState {
+    pub fn is_enabled(&self) -> bool {
+        matches!(self, EnabledState::Enabled | EnabledState::Required)
+    }
+}
+
+impl From<bool> for EnabledState {
+    fn from(value: bool) -> Self {
+        if value {
+            EnabledState::Enabled
+        } else {
+            EnabledState::Disabled
         }
     }
 }

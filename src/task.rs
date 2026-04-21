@@ -139,15 +139,6 @@ impl TaskManager
 mod tests {
     use super::*;
 
-
-    // struct MockSparkoEmbeddedStd {
-
-    // }
-
-    // impl SparkoEmbeddedStd for MockSparkoEmbeddedStd {
-
-    // }
-
     struct MockTask {
     }
 

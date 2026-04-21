@@ -1,8 +1,6 @@
 
 use std::{io::Write, sync::{Arc, Mutex}};
 
-// use crate::http::HttpServerManager;
-use anyhow::anyhow;
 use indexmap::IndexMap;
 use log::info;
 
@@ -92,32 +90,6 @@ impl ConfigManager {
         }
         Ok(())
     }
-    
-
-/*
-    pub fn get_valid_core_config(&self, key: &str) -> anyhow::Result<String> {
-        let inner = self.features.get(CORE_FEATURE_NAME).unwrap().inner.lock().unwrap();
-        if let Some(value) = inner.config.map.get(key) {
-            Ok(value.value.to_string())
-        }
-        else {
-            Err(anyhow!("Config value {} is missing", key))
-        }
-    }
-
-    pub fn is_core_config_valid(&self) -> bool {
-        log::info!("List ConfigManager:");
-        for name in self.features.keys() {
-            log::info!("Current feature in ConfigManager: {}", name);
-        }
-        log::info!("END List ConfigManager:");
-        if let Some(core_feature) = self.features.get(CORE_FEATURE_NAME) {
-            return core_feature.is_valid();
-        }
-        log::info!("Core feature not found");
-        false
-    }
-*/
 
     pub fn is_valid(&self) -> bool {
         for (_feature_name, feature_config) in &self.features {
@@ -185,7 +157,7 @@ impl ConfigManager {
                         </form>
                 "#).as_bytes())?;
             
-            config_manager_clone.commands.show_config_page(resp);
+            config_manager_clone.commands.show_config_page(resp)?;
             
             resp.write(format!(r#"
                     </div>
@@ -211,7 +183,7 @@ impl ConfigManager {
 
         let config_manager_clone = config_manager.clone();
 
-        server_manager.handle_post_form("/command", Box::new(move |mut resp, form| {
+        server_manager.handle_post_form("/command", Box::new(move |resp, form| {
             config_manager_clone.handle_command(resp, form)
         }))?;
 

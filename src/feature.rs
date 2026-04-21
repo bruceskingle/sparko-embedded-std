@@ -159,7 +159,7 @@ impl FeatureConfig {
                     continue;
                 },
                 TypedValue::Cron(opt_cron) => {
-                    let desctiption = if let Some(cron) = opt_cron {
+                    let description = if let Some(cron) = opt_cron {
                         cron.describe()
                     }
                     else {
@@ -170,7 +170,7 @@ impl FeatureConfig {
                                 <!-- Cron field {name}-->
                                 <label for="{name}">{name}</label>
                                 <input id="{name}" name="{name}" type="text" value="{value}">
-                                <input type="text" value="{desctiption}" disabled>
+                                <input type="text" value="{description}" disabled>
                     "#).as_bytes())?;
                     continue;
                 },

@@ -3,6 +3,8 @@
         "Condvar",
         "croner",
         "heapless",
-        "schedulable"
+        "maxlength",
+        "schedulable",
+        "stylesheet"
     ]
 }

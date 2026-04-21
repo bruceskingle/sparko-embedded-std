@@ -1,3 +1,4 @@
+// cSpell:disable
 pub const TIMEZONE_LEN: usize = 64;
 pub const TZ_EUROPE_LONDON: &str = "Europe/London";
 pub const TZ_EUROPE_BERLIN: &str = "Europe/Berlin";

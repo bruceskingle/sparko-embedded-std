@@ -63,7 +63,7 @@ impl ClockRenderer
 
         Self::draw_face(manager.display(), &self.clock_face, clock_color).anyhow()?;
 
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_to_angle(hour), -60).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
         Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::sexagesimal_to_angle(minute), -30).anyhow()?;
 
         let seconds_radians = Self::sexagesimal_to_angle(second);
@@ -97,11 +97,12 @@ impl ClockRenderer
         let second = now.second();
 
         if hour != self.hour {
-            Self::draw_hand(manager.display(), &self.clock_face, bg_color, Self::hour_to_angle(self.hour), -60).anyhow()?;
+           
             self.hour = hour;
         }
 
         if minute != self.minute {
+            Self::draw_hand(manager.display(), &self.clock_face, bg_color, Self::hour_minute_to_angle(self.hour, self.minute), -60).anyhow()?;
             Self::draw_hand(manager.display(), &self.clock_face, bg_color, Self::sexagesimal_to_angle(self.minute), -30).anyhow()?;
             self.minute = minute;
         }
@@ -114,7 +115,7 @@ impl ClockRenderer
             self.second = second;
         }
 
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_to_angle(hour), -60).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
         Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::sexagesimal_to_angle(minute), -30).anyhow()?;
 
         let seconds_radians = Self::sexagesimal_to_angle(second);
@@ -155,6 +156,14 @@ impl ClockRenderer
         let hour = hour % 12;
 
         (hour as f32 / 12.0) * 2.0 * PI
+    }
+
+    /// Converts an hour into an angle in radians.
+    pub fn hour_minute_to_angle(hour: u32, minute: u32) -> f32 {
+        // Convert from 24 to 12 hour time.
+        let hour = hour % 12;
+
+        ((hour as f32 + (minute as f32 / 60.0)) / 12.0)  * 2.0 * PI
     }
 
     /// Converts a sexagesimal (base 60) value into an angle in radians.

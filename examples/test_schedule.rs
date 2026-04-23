@@ -23,8 +23,8 @@ impl TestTask {
     }
 }
 
-impl Task for TestTask {
-    fn run(&mut self, _sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+impl Task<TestSparkoEmbeddedStd> for TestTask {
+    fn run(&mut self, _sparko_embedded: &mut TestSparkoEmbeddedStd) -> anyhow::Result<()> {
         log::info!("TestTask: {}", self.name);
         Ok(())
     }
@@ -44,7 +44,7 @@ fn main() -> anyhow::Result<()> {
         .with_task(Box::new(TestTask::new("Every Min")), "0 * * * * *")?
         .build();
 
-        task_manager.run(&TestSparkoEmbeddedStd {})?;
+        task_manager.run(&mut TestSparkoEmbeddedStd {})?;
     
     Ok(())
 }

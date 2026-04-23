@@ -139,6 +139,12 @@ impl<S: SparkoEmbeddedStd> TaskManager<S>
 mod tests {
     use super::*;
 
+    struct MockSparko {
+
+    }
+
+    impl SparkoEmbeddedStd for MockSparko {}
+
     struct MockTask {
     }
 
@@ -151,8 +157,8 @@ mod tests {
     }
 
     // Only implement Task for tests
-    impl Task for MockTask {
-        fn run(&mut self, _sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    impl Task<MockSparko> for MockTask {
+        fn run(&mut self, _sparko_embedded: &mut MockSparko) -> anyhow::Result<()> {
             Ok(())
         }
 
@@ -170,7 +176,7 @@ mod tests {
 
         #[test]
         fn test_new_task_manager() {
-            let manager = TaskManager::builder().build();
+            let manager: TaskManager<MockSparko> = TaskManager::builder().build();
             assert_eq!(manager.tasks.len(), 0);
         }
 

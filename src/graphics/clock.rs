@@ -63,12 +63,12 @@ impl ClockRenderer
 
         Self::draw_face(manager.display(), &self.clock_face, clock_color).anyhow()?;
 
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::sexagesimal_to_angle(minute), -30).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, Self::sexagesimal_to_angle(minute), -40).anyhow()?;
 
         let seconds_radians = Self::sexagesimal_to_angle(second);
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, seconds_radians, 0).anyhow()?;
-        Self::draw_second_decoration(manager.display(), &self.clock_face, clock_color, bg_color, seconds_radians, -20).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, seconds_radians, -11).anyhow()?;
+        Self::draw_second_decoration(manager.display(), &self.clock_face, clock_color, bg_color, seconds_radians, -30).anyhow()?;
 
         // Draw a small circle over the hands in the center of the clock face.
         // This has to happen after the hands are drawn so they're covered up.
@@ -87,10 +87,18 @@ impl ClockRenderer
     where
         DM: DisplayManager,
     {
+        self.do_update(manager, Local::now())
+
+    }
+
+    pub fn do_update<'a, DM>(&mut self, manager: &'a mut DM, now: chrono::DateTime<Local>)  -> anyhow::Result<()>
+    where
+        DM: DisplayManager,
+    {
         let clock_color = manager.map_color(&self.clock_color);
         let bg_color = manager.map_color(&self.bg_color);
 
-        let now = Local::now();
+        
 
         let hour = now.hour();
         let minute = now.minute();
@@ -102,25 +110,25 @@ impl ClockRenderer
         }
 
         if minute != self.minute {
-            Self::draw_hand(manager.display(), &self.clock_face, bg_color, Self::hour_minute_to_angle(self.hour, self.minute), -60).anyhow()?;
-            Self::draw_hand(manager.display(), &self.clock_face, bg_color, Self::sexagesimal_to_angle(self.minute), -30).anyhow()?;
+            Self::draw_hand(manager.display(), &self.clock_face, bg_color, 3, Self::hour_minute_to_angle(self.hour, self.minute), -60).anyhow()?;
+            Self::draw_hand(manager.display(), &self.clock_face, bg_color, 3, Self::sexagesimal_to_angle(self.minute), -30).anyhow()?;
             self.minute = minute;
         }
 
         if second != self.second {
             let seconds_radians = Self::sexagesimal_to_angle(self.second);
-            Self::draw_hand(manager.display(), &self.clock_face, bg_color, seconds_radians, 0).anyhow()?;
-            Self::draw_second_decoration(manager.display(), &self.clock_face, bg_color, bg_color, seconds_radians, -20).anyhow()?;
+            Self::draw_hand(manager.display(), &self.clock_face, bg_color, 3, seconds_radians, -11).anyhow()?;
+            Self::draw_second_decoration(manager.display(), &self.clock_face, bg_color, bg_color, seconds_radians, -30).anyhow()?;
 
             self.second = second;
         }
 
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, Self::sexagesimal_to_angle(minute), -30).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, Self::hour_minute_to_angle(hour, minute), -60).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, Self::sexagesimal_to_angle(minute), -40).anyhow()?;
 
         let seconds_radians = Self::sexagesimal_to_angle(second);
-        Self::draw_hand(manager.display(), &self.clock_face, clock_color, seconds_radians, 0).anyhow()?;
-        Self::draw_second_decoration(manager.display(), &self.clock_face, clock_color, bg_color, seconds_radians, -20).anyhow()?;
+        Self::draw_hand(manager.display(), &self.clock_face, clock_color, 1, seconds_radians, -11).anyhow()?;
+        Self::draw_second_decoration(manager.display(), &self.clock_face, clock_color, bg_color, seconds_radians, -30).anyhow()?;
 
         // Draw a small circle over the hands in the center of the clock face.
         // This has to happen after the hands are drawn so they're covered up.
@@ -214,6 +222,7 @@ impl ClockRenderer
         target: &mut D,
         clock_face: &Circle,
         stroke_color: C,
+        stroke_width: u32,
         angle: f32,
         length_delta: i32,
     ) -> Result<(), D::Error>
@@ -224,7 +233,7 @@ impl ClockRenderer
         let end = Self::polar(clock_face, angle, length_delta);
 
         Line::new(clock_face.center(), end)
-            .into_styled(PrimitiveStyle::with_stroke(stroke_color, 1))
+            .into_styled(PrimitiveStyle::with_stroke(stroke_color, stroke_width))
             .draw(target)
     }
 

@@ -1,6 +1,8 @@
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
+
+
 pub mod tz;
 pub mod task;
 pub mod config;
@@ -9,6 +11,7 @@ pub mod problem;
 pub mod http_server;
 pub mod feature;
 pub mod command;
+pub mod graphics;
 
 pub trait SparkoEmbeddedStd {
 }
@@ -28,36 +31,6 @@ pub enum Status {
     Error,
 }
 
-pub enum Color {
-    Black,
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    Magenta,
-    Cyan,
-    White,
-}
-
-pub trait DisplayManager {
-    fn set_status(&mut self, status: &Status) -> anyhow::Result<()> {
-        match status  {
-            Status::Initializing(init_status) => {
-                match init_status {
-                    InitStatus::Starting => self.fill_color(Color::Yellow),
-                    InitStatus::AwaitingClientIpAddress => self.fill_color(Color::Magenta),
-                    InitStatus::AwaitingTimeSync => self.fill_color(Color::Cyan),
-                    InitStatus::StartingFeatures => self.fill_color(Color::White),
-                }
-            },
-            Status::Running => self.fill_color(Color::Black),
-            Status::Setup => self.fill_color(Color::Blue),
-            Status::Error => self.fill_color(Color::Red),
-        }
-    }
-
-    fn fill_color(&mut self, color: Color) -> anyhow::Result<()>;
-}
 
 struct Shared<T> {
     config: T,

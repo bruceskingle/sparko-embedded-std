@@ -194,9 +194,13 @@ impl FeatureConfig {
         else {
             let name = format!("feature_{}", &self.name);
             let str_val = form.get(&name).map(|s| s.as_str()).unwrap_or("").trim();
-            let enabled = str_val == "on";
-            info!("Feature {} enabled value from form: {} -> enabled={}", &self.name, str_val, enabled);
-            inner.enabled = self.config_store.load_enabled_state()?;
+            let enabled = EnabledState::from(str_val == "on");
+            info!("Feature {} enabled value from form: {} -> enabled={:?}", &self.name, str_val, enabled);
+            if enabled != inner.enabled {
+                info!("Feature {} enabled value updated", &self.name);
+                self.config_store.save_enabled_state(enabled)?;
+                inner.enabled = enabled;
+            }
         }
 
         for (name, config_value) in inner.config.map.iter_mut() {

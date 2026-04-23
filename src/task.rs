@@ -7,25 +7,25 @@ use log::info;
 use crate::SparkoEmbeddedStd;
 
 
-pub trait Task
+pub trait Task<S: SparkoEmbeddedStd>
 {
-    fn run(&mut self, sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()>;
+    fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()>;
     fn name(&self) -> &str;
 }
 
-struct TaskHolder
+struct TaskHolder<S: SparkoEmbeddedStd>
 {
-    task: Box<dyn Task>,
+    task: Box<dyn Task<S>>,
     schedule: Cron,
     next_event: DateTime<Local>,
 }
 
-pub struct TaskManagerBuilder
+pub struct TaskManagerBuilder<S: SparkoEmbeddedStd>
 {
-    tasks: Vec<TaskHolder>,
+    tasks: Vec<TaskHolder<S>>,
 }
 
-impl TaskManagerBuilder
+impl<S: SparkoEmbeddedStd> TaskManagerBuilder<S>
 {
     pub fn new() -> Self {
         Self {
@@ -33,7 +33,7 @@ impl TaskManagerBuilder
         }
     }
 
-    pub fn add_task(&mut self, task: Box<dyn Task>, schedule_spec: &str) -> anyhow::Result<()> {
+    pub fn add_task(&mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<()> {
         let schedule = Cron::from_str(schedule_spec)?;
         // We are doing this here to validate the schedule spec early and avoid adding tasks with invalid schedules to the manager
         let next_event = schedule.find_next_occurrence(&Local::now(), false)?;
@@ -42,12 +42,12 @@ impl TaskManagerBuilder
         Ok(())
     }
 
-    pub fn with_task(mut self, task: Box<dyn Task>, schedule_spec: &str) -> anyhow::Result<Self> {
+    pub fn with_task(mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<Self> {
         self.add_task(task, schedule_spec)?;
         Ok(self)
     }
 
-    pub fn build(mut self) -> TaskManager {
+    pub fn build(mut self) -> TaskManager<S> {
         self.tasks.shrink_to_fit();
         TaskManager {
             tasks: self.tasks,
@@ -55,18 +55,18 @@ impl TaskManagerBuilder
     }
 }
 
-pub struct TaskManager
+pub struct TaskManager<S: SparkoEmbeddedStd>
 {
-    tasks: Vec<TaskHolder>,
+    tasks: Vec<TaskHolder<S>>,
 }
 
-impl TaskManager
+impl<S: SparkoEmbeddedStd> TaskManager<S>
 {
-    pub fn builder() -> TaskManagerBuilder {
+    pub fn builder() -> TaskManagerBuilder<S> {
         TaskManagerBuilder::new()
     }
 
-    pub fn run(&mut self, sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    pub fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()> {
         info!("Starting task manager with {} tasks", self.tasks.len());
         if self.tasks.is_empty() {
             anyhow::bail!("No tasks to run.");

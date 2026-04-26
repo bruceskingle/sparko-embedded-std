@@ -553,7 +553,6 @@ dependencies = [
  "heapless",
  "indexmap",
  "log",
- "micromath",
 ]
 
 [[package]]

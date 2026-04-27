@@ -16,6 +16,12 @@ pub mod graphics;
 pub trait SparkoEmbeddedStd {
 }
 
+pub enum DisplayOrientation {
+    Rotate0,
+    Rotate90,
+    Rotate180,
+    Rotate270,
+}
 
 
 pub enum InitStatus {

@@ -1,6 +1,6 @@
 
 use log::info;
-use sparko_embedded_std::SparkoEmbeddedStd;
+use sparko_embedded_std::platform::SparkoEmbeddedStd;
 use sparko_embedded_std::task::{Task, TaskManager};
 
 struct TestSparkoEmbeddedStd {

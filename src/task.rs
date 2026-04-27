@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use croner::Cron;
 use log::info;
 
-use crate::SparkoEmbeddedStd;
+use crate::platform::SparkoEmbeddedStd;
 
 
 pub trait Task<S: SparkoEmbeddedStd>

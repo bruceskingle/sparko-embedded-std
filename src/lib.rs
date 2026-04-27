@@ -3,6 +3,7 @@ use std::time::Duration;
 
 
 
+pub mod platform;
 pub mod tz;
 pub mod task;
 pub mod config;
@@ -13,8 +14,7 @@ pub mod feature;
 pub mod command;
 pub mod graphics;
 
-pub trait SparkoEmbeddedStd {
-}
+
 
 pub enum DisplayOrientation {
     Rotate0,

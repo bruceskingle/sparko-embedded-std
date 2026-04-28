@@ -1,6 +1,8 @@
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
+use embedded_graphics::primitives::Rectangle;
+
 
 
 pub mod platform;
@@ -14,7 +16,7 @@ pub mod feature;
 pub mod command;
 pub mod graphics;
 
-
+pub type Layout = fn(&Rectangle) -> Rectangle;
 
 pub enum DisplayOrientation {
     Rotate0,

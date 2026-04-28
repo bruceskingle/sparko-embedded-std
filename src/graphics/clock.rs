@@ -5,10 +5,10 @@ use core::f32::consts::PI;
 use chrono::{Local, Timelike};
 use embedded_graphics::{
     prelude::*,
-    primitives::{Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder},
+    primitives::{Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
 };
 
-use crate::graphics::{DisplayManager, DrawTargetResultExt};
+use crate::{Layout, graphics::{DisplayManager, DrawTargetResultExt}};
 
 
 use embedded_graphics::prelude::DrawTarget;
@@ -37,17 +37,16 @@ pub struct ClockRenderer{
 
 impl ClockRenderer
 {
-    pub fn new<DM>(manager: &mut DM) -> anyhow::Result<Self> 
+    pub fn new<DM>(manager: &mut DM,layout: Layout) -> anyhow::Result<Self> 
     where
         DM: DisplayManager,
     {
         let target: &mut DM::Display = manager.display();
 
         // The draw target bounding box can be used to determine the size of the display.
-        let bounding_box = target.bounding_box();
+        let bounding_box = layout(&target.bounding_box());
 
-        let margin = 1;
-        let diameter = bounding_box.size.width.min(bounding_box.size.height) - 2 * margin;
+        let diameter = bounding_box.size.width.min(bounding_box.size.height);
         let radius = (diameter / 2) as f32;
 
         let clock_face = Circle::with_center(bounding_box.center(), diameter);

@@ -1,31 +1,31 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use croner::Cron;
 use log::info;
 
-use crate::SparkoEmbeddedStd;
+use crate::platform::SparkoEmbeddedStd;
 
 
-pub trait Task
+pub trait Task<S: SparkoEmbeddedStd>
 {
-    fn run(&mut self, sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()>;
+    fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()>;
     fn name(&self) -> &str;
 }
 
-struct TaskHolder
+struct TaskHolder<S: SparkoEmbeddedStd>
 {
-    task: Box<dyn Task>,
+    task: Box<dyn Task<S>>,
     schedule: Cron,
-    next_event: DateTime<Local>,
+    next_event: DateTime<Utc>,
 }
 
-pub struct TaskManagerBuilder
+pub struct TaskManagerBuilder<S: SparkoEmbeddedStd>
 {
-    tasks: Vec<TaskHolder>,
+    tasks: Vec<TaskHolder<S>>,
 }
 
-impl TaskManagerBuilder
+impl<S: SparkoEmbeddedStd> TaskManagerBuilder<S>
 {
     pub fn new() -> Self {
         Self {
@@ -33,21 +33,21 @@ impl TaskManagerBuilder
         }
     }
 
-    pub fn add_task(&mut self, task: Box<dyn Task>, schedule_spec: &str) -> anyhow::Result<()> {
+    pub fn add_task(&mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<()> {
         let schedule = Cron::from_str(schedule_spec)?;
         // We are doing this here to validate the schedule spec early and avoid adding tasks with invalid schedules to the manager
-        let next_event = schedule.find_next_occurrence(&Local::now(), false)?;
+        let next_event = schedule.find_next_occurrence(&Utc::now(), false)?;
         info!("Task {} added with schedule {} which means {}", task.name(), schedule_spec, schedule.describe());
         self.tasks.push(TaskHolder{task, schedule, next_event});
         Ok(())
     }
 
-    pub fn with_task(mut self, task: Box<dyn Task>, schedule_spec: &str) -> anyhow::Result<Self> {
+    pub fn with_task(mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<Self> {
         self.add_task(task, schedule_spec)?;
         Ok(self)
     }
 
-    pub fn build(mut self) -> TaskManager {
+    pub fn build(mut self) -> TaskManager<S> {
         self.tasks.shrink_to_fit();
         TaskManager {
             tasks: self.tasks,
@@ -55,24 +55,24 @@ impl TaskManagerBuilder
     }
 }
 
-pub struct TaskManager
+pub struct TaskManager<S: SparkoEmbeddedStd>
 {
-    tasks: Vec<TaskHolder>,
+    tasks: Vec<TaskHolder<S>>,
 }
 
-impl TaskManager
+impl<S: SparkoEmbeddedStd> TaskManager<S>
 {
-    pub fn builder() -> TaskManagerBuilder {
+    pub fn builder() -> TaskManagerBuilder<S> {
         TaskManagerBuilder::new()
     }
 
-    pub fn run(&mut self, sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    pub fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()> {
         info!("Starting task manager with {} tasks", self.tasks.len());
         if self.tasks.is_empty() {
             anyhow::bail!("No tasks to run.");
         }
 
-        let now = Local::now();
+        let now = Utc::now();
         let mut i = 0;
 
         // Calculate the next event for all tasks
@@ -96,7 +96,7 @@ impl TaskManager
 
 
         loop {
-            info!("(TaskManager::run() top of loop");
+            // info!("(TaskManager::run() top of loop");
 
             // Find the task with the earliest next event
             let mut next_task_id = 0;
@@ -108,19 +108,26 @@ impl TaskManager
                 i += 1;
             }
         
-            let mut now = Local::now();
+            let mut now = Utc::now();
+            // info!("Loop next={:?} now-{:?} next > now = {:?}", self.tasks[next_task_id].next_event, now, self.tasks[next_task_id].next_event > now);
             while self.tasks[next_task_id].next_event > now {
-                log::info!("Next task {} scheduled for {}, waiting...", self.tasks[next_task_id].task.name(), self.tasks[next_task_id].next_event);
-                std::thread::sleep((self.tasks[next_task_id].next_event - now).to_std().unwrap());
-                now = Local::now();
+                let diff = (self.tasks[next_task_id].next_event - now);
+                let duration = diff.to_std().unwrap();
+                // log::info!("Now is {} Next task {} scheduled for {}, waiting...diff={} duration ={:?}",
+                //  now, self.tasks[next_task_id].task.name(), self.tasks[next_task_id].next_event, diff, duration);
+                std::thread::sleep(duration);
+                now = Utc::now();
             }
-            log::info!("Running task: {}", self.tasks[next_task_id].task.name());
+            // log::info!("Running task: {} due at {:?}", self.tasks[next_task_id].task.name(), self.tasks[next_task_id].next_event);
             if let Err(error) = self.tasks[next_task_id].task.run(sparko_embedded) {
                 log::error!("Error running task {}: {}", self.tasks[next_task_id].task.name(), error);
             }
             // Update next event after running
             match self.tasks[next_task_id].schedule.find_next_occurrence(&self.tasks[next_task_id].next_event, false) {
-                Ok(value) => self.tasks[next_task_id].next_event = value,
+                Ok(value) => {
+                    self.tasks[next_task_id].next_event = value;
+                    // log::info!("task: {} next due at {:?}", self.tasks[next_task_id].task.name(), self.tasks[next_task_id].next_event);
+                },
                 Err(error) => {
                     log::error!("Failed to calculate next occurrence for task {}: {}", self.tasks[next_task_id].task.name(), error);
                     self.tasks.remove(next_task_id);
@@ -139,6 +146,12 @@ impl TaskManager
 mod tests {
     use super::*;
 
+    struct MockSparko {
+
+    }
+
+    impl SparkoEmbeddedStd for MockSparko {}
+
     struct MockTask {
     }
 
@@ -151,8 +164,8 @@ mod tests {
     }
 
     // Only implement Task for tests
-    impl Task for MockTask {
-        fn run(&mut self, _sparko_embedded: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    impl Task<MockSparko> for MockTask {
+        fn run(&mut self, _sparko_embedded: &mut MockSparko) -> anyhow::Result<()> {
             Ok(())
         }
 
@@ -170,7 +183,7 @@ mod tests {
 
         #[test]
         fn test_new_task_manager() {
-            let manager = TaskManager::builder().build();
+            let manager: TaskManager<MockSparko> = TaskManager::builder().build();
             assert_eq!(manager.tasks.len(), 0);
         }
 
@@ -192,7 +205,7 @@ mod tests {
         //     manager.add_task(task1);
             
         //     // Add task that runs in 2 minutes (should become next_task_id)
-        //     let future_time = Local::now() + Duration::minutes(2);
+        //     let future_time = Utc::now() + Duration::minutes(2);
         //     let cron_expr = format!("{} {} {} {} {} *", 
         //         future_time.minute(),
         //         future_time.hour(),
@@ -215,7 +228,7 @@ mod tests {
         //     let schedule = task.get_schedule();
             
         //     // Test that we can find next occurrence
-        //     let now = Local::now();
+        //     let now = Utc::now();
         //     let next = schedule.find_next_occurrence(&now, false);
         //     assert!(next.is_ok());
             

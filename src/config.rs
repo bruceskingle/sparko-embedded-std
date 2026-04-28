@@ -240,10 +240,11 @@ pub trait ConfigStore: Sync + Send {
     fn save(&self, name: &str, config_value: &mut ConfigSpecValue, str_value: &str) -> anyhow::Result<()>;
     fn remove(&self, name: &str, config_value: &mut ConfigSpecValue) -> anyhow::Result<()>;
     fn load_enabled_state(&self) -> anyhow::Result<EnabledState>;
+    fn save_enabled_state(&self, enabled_state: EnabledState) -> anyhow::Result<()>;
 }
 
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EnabledState {
     Enabled,
     Disabled,

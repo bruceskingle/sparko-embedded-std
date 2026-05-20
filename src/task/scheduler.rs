@@ -7,7 +7,7 @@ use log::info;
 use crate::platform::SparkoEmbeddedStd;
 
 
-pub trait Task<S: SparkoEmbeddedStd>
+pub trait ScheduledTask<S: SparkoEmbeddedStd>
 {
     fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()>;
     fn name(&self) -> &str;
@@ -15,17 +15,17 @@ pub trait Task<S: SparkoEmbeddedStd>
 
 struct TaskHolder<S: SparkoEmbeddedStd>
 {
-    task: Box<dyn Task<S>>,
+    task: Box<dyn ScheduledTask<S>>,
     schedule: Cron,
     next_event: DateTime<Utc>,
 }
 
-pub struct TaskManagerBuilder<S: SparkoEmbeddedStd>
+pub struct TaskSchedulerBuilder<S: SparkoEmbeddedStd>
 {
     tasks: Vec<TaskHolder<S>>,
 }
 
-impl<S: SparkoEmbeddedStd> TaskManagerBuilder<S>
+impl<S: SparkoEmbeddedStd> TaskSchedulerBuilder<S>
 {
     pub fn new() -> Self {
         Self {
@@ -33,7 +33,7 @@ impl<S: SparkoEmbeddedStd> TaskManagerBuilder<S>
         }
     }
 
-    pub fn add_task(&mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<()> {
+    pub fn add_task(&mut self, task: Box<dyn ScheduledTask<S>>, schedule_spec: &str) -> anyhow::Result<()> {
         let schedule = Cron::from_str(schedule_spec)?;
         // We are doing this here to validate the schedule spec early and avoid adding tasks with invalid schedules to the manager
         let next_event = schedule.find_next_occurrence(&Utc::now(), false)?;
@@ -42,28 +42,28 @@ impl<S: SparkoEmbeddedStd> TaskManagerBuilder<S>
         Ok(())
     }
 
-    pub fn with_task(mut self, task: Box<dyn Task<S>>, schedule_spec: &str) -> anyhow::Result<Self> {
+    pub fn with_task(mut self, task: Box<dyn ScheduledTask<S>>, schedule_spec: &str) -> anyhow::Result<Self> {
         self.add_task(task, schedule_spec)?;
         Ok(self)
     }
 
-    pub fn build(mut self) -> TaskManager<S> {
+    pub fn build(mut self) -> TaskScheduler<S> {
         self.tasks.shrink_to_fit();
-        TaskManager {
+        TaskScheduler {
             tasks: self.tasks,
         }
     }
 }
 
-pub struct TaskManager<S: SparkoEmbeddedStd>
+pub struct TaskScheduler<S: SparkoEmbeddedStd>
 {
     tasks: Vec<TaskHolder<S>>,
 }
 
-impl<S: SparkoEmbeddedStd> TaskManager<S>
+impl<S: SparkoEmbeddedStd> TaskScheduler<S>
 {
-    pub fn builder() -> TaskManagerBuilder<S> {
-        TaskManagerBuilder::new()
+    pub fn builder() -> TaskSchedulerBuilder<S> {
+        TaskSchedulerBuilder::new()
     }
 
     pub fn run(&mut self, sparko_embedded: &mut S) -> anyhow::Result<()> {
@@ -96,7 +96,7 @@ impl<S: SparkoEmbeddedStd> TaskManager<S>
 
 
         loop {
-            // info!("(TaskManager::run() top of loop");
+            // info!("(TaskScheduler::run() top of loop");
 
             // Find the task with the earliest next event
             let mut next_task_id = 0;
@@ -164,7 +164,7 @@ mod tests {
     }
 
     // Only implement Task for tests
-    impl Task<MockSparko> for MockTask {
+    impl ScheduledTask<MockSparko> for MockTask {
         fn run(&mut self, _sparko_embedded: &mut MockSparko) -> anyhow::Result<()> {
             Ok(())
         }
@@ -183,13 +183,13 @@ mod tests {
 
         #[test]
         fn test_new_task_manager() {
-            let manager: TaskManager<MockSparko> = TaskManager::builder().build();
+            let manager: TaskScheduler<MockSparko> = TaskScheduler::builder().build();
             assert_eq!(manager.tasks.len(), 0);
         }
 
         #[test]
         fn test_add_first_task() {
-            let manager = TaskManager::builder()
+            let manager = TaskScheduler::builder()
             .with_task(MockTask::new(), "* * * * * *").unwrap() // Add a task that runs every minute
             .build();
             
@@ -198,7 +198,7 @@ mod tests {
 
         // #[test]
         // fn test_add_multiple_tasks_with_different_schedules() {
-        //     let mut manager = TaskManager::new();
+        //     let mut manager = TaskScheduler::new();
             
         //     // Add task that runs in 1 minute
         //     let task1 = MockTask::new("* * * * * *");

@@ -1,7 +1,7 @@
 
 use log::info;
 use sparko_embedded_std::platform::SparkoEmbeddedStd;
-use sparko_embedded_std::task::{Task, TaskManager};
+use sparko_embedded_std::task::scheduler::{ScheduledTask, TaskScheduler};
 
 struct TestSparkoEmbeddedStd {
 
@@ -23,7 +23,7 @@ impl TestTask {
     }
 }
 
-impl Task<TestSparkoEmbeddedStd> for TestTask {
+impl ScheduledTask<TestSparkoEmbeddedStd> for TestTask {
     fn run(&mut self, _sparko_embedded: &mut TestSparkoEmbeddedStd) -> anyhow::Result<()> {
         log::info!("TestTask: {}", self.name);
         Ok(())
@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     
     info!("Test schedule...");
 
-    let mut task_manager = TaskManager::builder()
+    let mut task_manager = TaskScheduler::builder()
         .with_task(Box::new(TestTask::new("Every Sec")), "* * * * * *")?
         .with_task(Box::new(TestTask::new("Every Min")), "0 * * * * *")?
         .build();

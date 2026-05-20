@@ -5,6 +5,7 @@
         "heapless",
         "maxlength",
         "schedulable",
-        "stylesheet"
+        "stylesheet",
+        "Timelike"
     ]
 }

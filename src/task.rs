@@ -111,7 +111,7 @@ impl<S: SparkoEmbeddedStd> TaskManager<S>
             let mut now = Utc::now();
             // info!("Loop next={:?} now-{:?} next > now = {:?}", self.tasks[next_task_id].next_event, now, self.tasks[next_task_id].next_event > now);
             while self.tasks[next_task_id].next_event > now {
-                let diff = (self.tasks[next_task_id].next_event - now);
+                let diff = self.tasks[next_task_id].next_event - now ;
                 let duration = diff.to_std().unwrap();
                 // log::info!("Now is {} Next task {} scheduled for {}, waiting...diff={} duration ={:?}",
                 //  now, self.tasks[next_task_id].task.name(), self.tasks[next_task_id].next_event, diff, duration);

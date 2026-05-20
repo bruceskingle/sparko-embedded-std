@@ -18,6 +18,7 @@ pub mod graphics;
 
 pub type Layout = fn(&Rectangle) -> Rectangle;
 
+#[derive(Debug, Clone, Copy)]
 pub enum DisplayOrientation {
     Rotate0,
     Rotate90,

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use croner::Cron;
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::info;
-use sparko_platform::{config::{ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue}, problem::ProblemManager, tz::{TIMEZONE_LEN, TimeZone}};
+use sparko_embedded_std::{config::{ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue}, problem::ProblemManager, tz::{TIMEZONE_LEN, TimeZone}};
 
 use crate::core::CORE_FEATURE_NAME;
 

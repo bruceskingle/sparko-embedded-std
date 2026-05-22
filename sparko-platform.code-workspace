@@ -1,12 +1,12 @@
 {
 	"folders": [
 		{
-			"name": "core",
-			"path": "libs/core"
+			"name": "sparko-embedded-std",
+			"path": "libs/sparko-embedded-std"
 		},
 		{
-			"name": "esp-idf",
-			"path": "libs/esp-idf"
+			"name": "sparko-esp-idf",
+			"path": "libs/sparko-esp-idf"
 		},
 		{
 			"name": "devkitv1",
@@ -71,6 +71,16 @@
 			"Timelike",
 			"tzset",
 			"xiao"
-		]
+		],
+		"rust-analyzer.check.overrideCommand": [
+			"cargo",
+			"check",
+			"--release",
+			"--message-format=json"
+		],
+		"rust-analyzer.cargo.extraArgs": [
+			"--release"
+		],
+		"rust-analyzer.checkOnSave": false
 	}
 }

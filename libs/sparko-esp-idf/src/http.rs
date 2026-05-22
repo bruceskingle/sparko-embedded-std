@@ -1,9 +1,12 @@
 use std::{io::Write, sync::Arc};
 
-use esp_idf_svc::http::{Method, server::{EspHttpConnection, EspHttpServer}};
+use esp_idf_svc::http::{
+    Method,
+    server::{EspHttpConnection, EspHttpServer},
+};
 use indexmap::IndexMap;
 use log::info;
-use sparko_platform::http_server::{HttpMethod, HttpServerManager};
+use sparko_embedded_std::http_server::{HttpMethod, HttpServerManager};
 use url::form_urlencoded;
 
 /*
@@ -28,7 +31,6 @@ STOP.
 
 GO BACK.
 */
-
 
 fn to_esp_method(http_method: HttpMethod) -> Method {
     match http_method {
@@ -57,11 +59,9 @@ impl<'r, 'c> std::io::Write for WriteWrapper<'r, 'c> {
     }
 }
 
-pub struct EspHttpServerManager<'a>{
+pub struct EspHttpServerManager<'a> {
     server: EspHttpServer<'a>,
 }
-
-
 
 fn is_online(ap_mode: &Arc<std::sync::Mutex<bool>>) -> bool {
     let is_ap_mode = *ap_mode.lock().unwrap();
@@ -72,19 +72,16 @@ fn is_online(ap_mode: &Arc<std::sync::Mutex<bool>>) -> bool {
 impl EspHttpServerManager<'_> {
     pub fn new() -> anyhow::Result<Self> {
         let server = EspHttpServer::new(&Default::default())?;
-        Ok(Self {
-            server,
-        })
+        Ok(Self { server })
     }
 
-    pub fn on<F>(
-        &mut self,
-        uri: &str,
-        method: Method,
-        f: F,
-    ) -> anyhow::Result<&mut Self>
+    pub fn on<F>(&mut self, uri: &str, method: Method, f: F) -> anyhow::Result<&mut Self>
     where
-        F: for<'r> Fn(esp_idf_svc::http::server::Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + 'static,
+        F: for<'r> Fn(
+                esp_idf_svc::http::server::Request<&mut EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + 'static,
     {
         self.server.fn_handler(uri, method, f)?;
 
@@ -93,14 +90,19 @@ impl EspHttpServerManager<'_> {
 
     pub fn init_captive_portal(
         &mut self,
-        ap_mode: &Arc<std::sync::Mutex<bool>>
+        ap_mode: &Arc<std::sync::Mutex<bool>>,
     ) -> anyhow::Result<()> {
         let ap_mode_clone = ap_mode.clone();
 
         self.on("/generate_204", Method::Get, move |req| {
-            info!("Received {:?} request for {} configured={}", req.method(), req.uri(), is_online(&ap_mode_clone));
-            if is_online(&ap_mode_clone) { 
-                let mut resp = req.into_ok_response()?;        
+            info!(
+                "Received {:?} request for {} configured={}",
+                req.method(),
+                req.uri(),
+                is_online(&ap_mode_clone)
+            );
+            if is_online(&ap_mode_clone) {
+                let mut resp = req.into_ok_response()?;
                 resp.write(b"<HTML><BODY>Success</BODY></HTML>")?;
             } else {
                 let mut resp = req.into_response(302, None, &[("Location", "/config")])?;
@@ -111,10 +113,16 @@ impl EspHttpServerManager<'_> {
 
         let ap_mode_clone = ap_mode.clone();
         self.on("/hotspot-detect.html", Method::Get, move |req| {
-            info!("Received {:?} request for {} configured={}", req.method(), req.uri(), is_online(&ap_mode_clone));
+            info!(
+                "Received {:?} request for {} configured={}",
+                req.method(),
+                req.uri(),
+                is_online(&ap_mode_clone)
+            );
             if is_online(&ap_mode_clone) {
-                let mut resp = req.into_ok_response()?;       
-                resp.write(b"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">
+                let mut resp = req.into_ok_response()?;
+                resp.write(
+                    b"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">
 <HTML>
 <HEAD>
 	<TITLE>Success</TITLE>
@@ -122,8 +130,10 @@ impl EspHttpServerManager<'_> {
 <BODY>
 	Success
 </BODY>
-</HTML>")?;
-            } else {let mut resp = req.into_response(302, None, &[("Location", "/config")])?;
+</HTML>",
+                )?;
+            } else {
+                let mut resp = req.into_response(302, None, &[("Location", "/config")])?;
                 resp.write(b"<HTML><BODY>Not configured</BODY></HTML>")?;
             }
             Ok(())
@@ -131,10 +141,15 @@ impl EspHttpServerManager<'_> {
 
         let ap_mode_clone = ap_mode.clone();
         self.on("/connecttest.txt", Method::Get, move |req| {
-            info!("Received {:?} request for {} configured={}", req.method(), req.uri(), is_online(&ap_mode_clone));
-            
+            info!(
+                "Received {:?} request for {} configured={}",
+                req.method(),
+                req.uri(),
+                is_online(&ap_mode_clone)
+            );
+
             if is_online(&ap_mode_clone) {
-                let mut resp = req.into_ok_response()?;       
+                let mut resp = req.into_ok_response()?;
                 resp.write(b"Microsoft Connect Test")?;
             } else {
                 let mut resp = req.into_response(302, None, &[("Location", "/config")])?;
@@ -145,25 +160,23 @@ impl EspHttpServerManager<'_> {
 
         Ok(())
     }
-    
 }
 
-impl HttpServerManager for EspHttpServerManager<'_> 
-{
+impl HttpServerManager for EspHttpServerManager<'_> {
     fn handle(
         &mut self,
         uri: &str,
         method: HttpMethod,
         f: Box<dyn Fn(&mut dyn Write) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()> {
-        
-        self.server.fn_handler(uri, to_esp_method(method), move |req| {
-            let mut wrapper = WriteWrapper {
-                resp: req.into_ok_response()?,
-            };
+        self.server
+            .fn_handler(uri, to_esp_method(method), move |req| {
+                let mut wrapper = WriteWrapper {
+                    resp: req.into_ok_response()?,
+                };
 
-            f(&mut wrapper)
-        })?;
+                f(&mut wrapper)
+            })?;
 
         Ok(())
     }
@@ -171,14 +184,9 @@ impl HttpServerManager for EspHttpServerManager<'_>
     fn handle_post_form(
         &mut self,
         uri: &str,
-        f: Box<
-            dyn Fn(&mut dyn Write, IndexMap<String, String>) -> anyhow::Result<()>
-                + Send,
-        >,
+        f: Box<dyn Fn(&mut dyn Write, IndexMap<String, String>) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()> {
-        
         self.server.fn_handler(uri, Method::Post, move |mut req| {
-
             let mut body = Vec::new();
             let mut buf = [0u8; 256];
 
@@ -213,22 +221,14 @@ impl HttpServerManager for EspHttpServerManager<'_>
         headers: &'static [(&'static str, &'static str)],
         f: Box<dyn Fn(&mut dyn Write) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()> {
-        
+        self.server
+            .fn_handler(uri, to_esp_method(method), move |req| {
+                let resp = req.into_response(status, message, headers)?;
 
-        self.server.fn_handler(uri, to_esp_method(method), move |req| {
+                let mut wrapper = WriteWrapper { resp };
 
-            let resp = req.into_response(
-                status,
-                message,
-                headers,
-            )?;
-
-            let mut wrapper = WriteWrapper {
-                resp,
-            };
-
-            f(&mut wrapper)
-        })?;
+                f(&mut wrapper)
+            })?;
 
         Ok(())
     }

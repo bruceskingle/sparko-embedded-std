@@ -1,13 +1,13 @@
-use std::str::FromStr;
+use std::borrow::Borrow;
 use std::net::IpAddr;
 use std::net::ToSocketAddrs;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::borrow::Borrow;
 
+use chrono::Datelike;
 use chrono::Local;
 use chrono::Timelike;
-use chrono::Datelike;
 
 use embedded_graphics::prelude::Point;
 use embedded_graphics::prelude::Size;
@@ -19,15 +19,15 @@ use esp_idf_svc::http::Method;
 use esp_idf_svc::http::client::EspHttpConnection;
 use log::info;
 use rgb::RGB8;
-use sparko_platform::Layout;
-use sparko_platform::config::Config;
-use sparko_platform::config::ConfigSpec;
-use sparko_platform::config::ConfigSpecValue;
-use sparko_platform::config::TypedValue;
-use sparko_platform::graphics::ClockRenderer;
-use sparko_platform::graphics::DisplayManager;
-use sparko_platform::task::scheduler::ScheduledTask;
-use sparko_platform::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::Layout;
+use sparko_embedded_std::config::Config;
+use sparko_embedded_std::config::ConfigSpec;
+use sparko_embedded_std::config::ConfigSpecValue;
+use sparko_embedded_std::config::TypedValue;
+use sparko_embedded_std::graphics::ClockRenderer;
+use sparko_embedded_std::graphics::DisplayManager;
+use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::task::scheduler::ScheduledTask;
 
 use esp_idf_svc::hal::rmt::RmtChannel;
 // use smart_leds::{RGB8, SmartLedsWrite, hsv::{Hsv, hsv2rgb}};
@@ -134,18 +134,18 @@ impl BinaryClockConfig {
     }
 
     /*
-        8 x 8 matrix layout, snake wired 
-        63, 62, 61, 60, 59, 58, 57, 56,
-        48, 49, 50, 51, 52, 53, 54, 55,
-        47, 46, 45, 44, 43, 42, 41, 40,
-        32, 33, 34, 35, 36, 37, 38, 39,
+       8 x 8 matrix layout, snake wired
+       63, 62, 61, 60, 59, 58, 57, 56,
+       48, 49, 50, 51, 52, 53, 54, 55,
+       47, 46, 45, 44, 43, 42, 41, 40,
+       32, 33, 34, 35, 36, 37, 38, 39,
 
-        31, 30, 29, 28, 27, 26, 25, 24, 
-        16, 17, 18, 19, 20, 21, 22, 23,
-        15, 14, 13, 12, 11, 10, 9,  8,
-         0, 1,  2,  3,  4,  5,  6,  7, 
-   
-     */
+       31, 30, 29, 28, 27, 26, 25, 24,
+       16, 17, 18, 19, 20, 21, 22, 23,
+       15, 14, 13, 12, 11, 10, 9,  8,
+        0, 1,  2,  3,  4,  5,  6,  7,
+
+    */
 
     pub fn matrix_8_8() -> Self {
         Self {
@@ -181,9 +181,6 @@ impl BinaryClockConfig {
                     on_colour: RGB8::new(0, 0, HIGH),
                     bits: vec![24, 23, 8, 7],
                 },
-
-
-
                 BinaryDigitConfig {
                     off_colour: RGB8::new(0, MIN, MIN),
                     on_colour: RGB8::new(0, HIGH, HIGH),
@@ -241,13 +238,9 @@ pub struct BinaryClockFeature<T: SmartLeds> {
 // }
 
 impl<'d> BinaryClockFeature<SmartLedsRmt<'d>> {
-    pub fn new_rmt(
-        smart_leds: SmartLedsRmt<'d>
-    ) -> BinaryClockFeature<SmartLedsRmt<'d>> {
-        let x= ClockTask::new_rmt(smart_leds);
-        BinaryClockFeature {
-            task: Some(x),
-        }
+    pub fn new_rmt(smart_leds: SmartLedsRmt<'d>) -> BinaryClockFeature<SmartLedsRmt<'d>> {
+        let x = ClockTask::new_rmt(smart_leds);
+        BinaryClockFeature { task: Some(x) }
     }
 }
 
@@ -255,27 +248,25 @@ impl<'d> BinaryClockFeature<SmartLedsRmt<'d>> {
 // where
 //     T: Borrow<SpiDriver<'d>> + 'd,
 
-// impl <SmartLedsSpi<'static>> 
+// impl <SmartLedsSpi<'static>>
 impl<'d, T> BinaryClockFeature<SmartLedsSpi<'d, T>>
 where
     T: Borrow<SpiDriver<'d>> + 'd,
 {
-    pub fn new_spi
-    (
-        smart_leds: SmartLedsSpi<'d, T>,
-    ) -> BinaryClockFeature<SmartLedsSpi<'d, T>>
+    pub fn new_spi(smart_leds: SmartLedsSpi<'d, T>) -> BinaryClockFeature<SmartLedsSpi<'d, T>>
     where
-    T: Borrow<SpiDriver<'d>> + 'd,
+        T: Borrow<SpiDriver<'d>> + 'd,
     {
         let x = ClockTask::new_spi(smart_leds);
-        BinaryClockFeature {
-            task: Some(x),
-        }
+        BinaryClockFeature { task: Some(x) }
     }
 }
 
 impl<T: SmartLeds + 'static> Feature for BinaryClockFeature<T> {
-    fn init(&self, _initializer: &mut crate::sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<FeatureDescriptor> {
+    fn init(
+        &self,
+        _initializer: &mut crate::sparko_esp32_std::SparkoEsp32StdInitializer,
+    ) -> anyhow::Result<FeatureDescriptor> {
         info!("BinaryClock::init()");
         let config = ConfigSpec::builder()
             // .with(USER_NAME.to_string(), ConfigSpecValue::new(TypedValue::String(32, None), true))?
@@ -288,27 +279,31 @@ impl<T: SmartLeds + 'static> Feature for BinaryClockFeature<T> {
             // .with(UPDATE_REQUIRES_ADDRESS.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false ))?
             // .with(SCHEDULE.to_string(), ConfigSpecValue::new(TypedValue::Cron(None), true))?
             .build();
-        
+
         Ok(FeatureDescriptor {
             name: "BinaryClock".to_string(),
             config,
         })
     }
-    
-    fn start(&mut self, sparko: &mut SparkoEsp32Std, initializer: &mut SparkoEsp32StdInitializer, config: &Config) -> anyhow::Result<()> {
+
+    fn start(
+        &mut self,
+        sparko: &mut SparkoEsp32Std,
+        initializer: &mut SparkoEsp32StdInitializer,
+        config: &Config,
+    ) -> anyhow::Result<()> {
         match self.task.take() {
             Some(task) => initializer.add_task(Box::new(task), "* * * * * *")?,
             None => anyhow::bail!("BinaryClock task already taken"),
         }
-        
+
         Ok(())
     }
-
 }
 
 pub struct ClockTask<T: SmartLeds> {
     // ws2812: ws2812_esp32_rmt_driver::LedPixelEsp32Rmt<'static,
-    //     smart_leds::RGB<u8>, 
+    //     smart_leds::RGB<u8>,
     //     ws2812_esp32_rmt_driver::driver::color::LedPixelColorImpl<3, 1, 0, 2, i>>,
     smart_leds: T,
     config: BinaryClockConfig,
@@ -325,15 +320,11 @@ impl<'d> ClockTask<SmartLedsRmt<'d>> {
     }
 }
 
-
 impl<'d, T> ClockTask<SmartLedsSpi<'d, T>>
-    where
-        T: Borrow<SpiDriver<'d>> + 'd,
+where
+    T: Borrow<SpiDriver<'d>> + 'd,
 {
-    fn new_spi(
-        smart_leds: SmartLedsSpi<'d, T>,
-    ) -> Self     
-    {
+    fn new_spi(smart_leds: SmartLedsSpi<'d, T>) -> Self {
         ClockTask {
             smart_leds,
             config: BinaryClockConfig::matrix_8_8(),
@@ -343,13 +334,7 @@ impl<'d, T> ClockTask<SmartLedsSpi<'d, T>>
 }
 
 impl<T: SmartLeds> ClockTask<T> {
-
-    fn to_bits(
-        &mut self,
-        digit: usize,
-        v: u32,
-    ) -> anyhow::Result<()>
-    {
+    fn to_bits(&mut self, digit: usize, v: u32) -> anyhow::Result<()> {
         let digit_config = &self.config.digits[digit];
         let off = digit_config.off_colour;
         let on = digit_config.on_colour;
@@ -362,23 +347,22 @@ impl<T: SmartLeds> ClockTask<T> {
             let bit = (v >> (bits.len() - 1 - i)) & 1;
 
             // self.pixels[index] = if bit == 0 { off } else { on };
-            self.smart_leds.set_pixel_rgb(index, if bit == 0 { off } else { on })?;
+            self.smart_leds
+                .set_pixel_rgb(index, if bit == 0 { off } else { on })?;
         }
         Ok(())
     }
 }
 
-
-impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T>
-{
+impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T> {
     // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
-    //     let clock_renderer = 
+    //     let clock_renderer =
     // }
-    
+
     fn name(&self) -> &str {
         "Binary Clock"
     }
-    
+
     fn run(&mut self, sparko_embedded: &mut SparkoEsp32Std) -> anyhow::Result<()> {
         // let mut i: u8 = 0;
         // for j in 0..self.i {
@@ -394,7 +378,7 @@ impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T>
         // self.smart_leds.set_pixel_rgb(idx + 5, RGB8 {r: 0, g: i, b: i})?;
 
         // self.i += 1;
-        
+
         let now = Local::now();
 
         info!("Current time: {}", now.format("%Y-%m-%d %H:%M:%S"));
@@ -406,7 +390,6 @@ impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T>
 
         self.to_bits(4, now.second() / 10)?;
         self.to_bits(5, now.second() % 10)?;
-
 
         self.to_bits(6, now.day() / 10)?;
         self.to_bits(7, now.day() % 10)?;

@@ -1,27 +1,21 @@
-
 use std::fmt::Display;
 
-use embedded_graphics::{
-    pixelcolor::Rgb565,
-    prelude::*,
-};
-use sparko_platform::{config::Config, feature::FeatureDescriptor, graphics::Color};
-
-
+use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
+use sparko_embedded_std::{config::Config, feature::FeatureDescriptor, graphics::Color};
 
 pub mod sparko_esp32_std;
 
-mod config_store;
-mod wifi;
-mod http;
 mod commands;
-mod portal;
+mod config_store;
+mod core;
+pub mod dyndns2;
+mod http;
 #[cfg(feature = "led")]
 mod led;
 mod mdns;
-mod core;
-pub mod dyndns2;
+mod portal;
 pub mod smart_led;
+mod wifi;
 // pub mod led_strip;
 #[cfg(feature = "touch-driver")]
 pub mod touch;
@@ -37,7 +31,6 @@ pub mod analog_clock_feature;
 #[cfg(feature = "mipi-dsi-display")]
 mod display_mipidsi;
 
-
 #[cfg(feature = "display")]
 mod display;
 
@@ -47,21 +40,27 @@ pub trait AnyhowResultExt<T> {
 
 impl<T, E> AnyhowResultExt<T> for Result<T, E>
 where
-    E: Display, {
+    E: Display,
+{
     fn anyhow(self) -> anyhow::Result<T> {
         self.map_err(|e| anyhow::anyhow!("Operation failed: {}", e))
     }
 }
 
-
 pub trait Feature {
-    fn init(&self, init: &mut sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<FeatureDescriptor> ;
-    fn start(&mut self, sparko: &mut sparko_esp32_std::SparkoEsp32Std, initializer: &mut sparko_esp32_std::SparkoEsp32StdInitializer, config: &Config) -> anyhow::Result<()>;
+    fn init(
+        &self,
+        init: &mut sparko_esp32_std::SparkoEsp32StdInitializer,
+    ) -> anyhow::Result<FeatureDescriptor>;
+    fn start(
+        &mut self,
+        sparko: &mut sparko_esp32_std::SparkoEsp32Std,
+        initializer: &mut sparko_esp32_std::SparkoEsp32StdInitializer,
+        config: &Config,
+    ) -> anyhow::Result<()>;
 }
 
-pub trait FeatureConfig {
-
-}
+pub trait FeatureConfig {}
 
 pub fn to_rgb565(color: &Color) -> Rgb565 {
     match color {

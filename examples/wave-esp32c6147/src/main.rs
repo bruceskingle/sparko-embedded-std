@@ -1,6 +1,6 @@
 use embedded_graphics::{prelude::{Point, Size}, primitives::Rectangle};
 use sparko_embedded_std::DisplayOrientation;
-use sparko_esp_std::{analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std};
+use sparko_esp_idf::{analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std};
 
 
 
@@ -30,7 +30,7 @@ fn run() -> anyhow::Result<()> {
 
     let (builder, remainder) = SparkoEsp32Std::builder()?;
 
-    let smart_leds = sparko_esp_std::smart_led::new(
+    let smart_leds = sparko_esp_idf::smart_led::new(
         remainder.rmt.channel0,
         // remainder.spi3,
         remainder.gpio5,

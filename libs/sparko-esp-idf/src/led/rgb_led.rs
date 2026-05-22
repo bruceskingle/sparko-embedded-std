@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use esp_idf_hal::ledc::LedcDriver;
 use esp_idf_hal::units::*;
 
-use sparko_platform::Status;
+use sparko_embedded_std::Status;
 
 use crate::led::LedManager;
 

@@ -4,11 +4,11 @@ use std::sync::mpsc::Receiver;
 
 use chrono::Local;
 use log::info;
-use sparko_platform::{config::{Config, ConfigSpec, ConfigSpecValue, TypedValue}, feature::FeatureDescriptor, platform::SparkoEmbeddedStd, task::scheduler::ScheduledTask, tz::TimeZone};
+use sparko_embedded_std::{config::{Config, ConfigSpec, ConfigSpecValue, TypedValue}, feature::FeatureDescriptor, platform::SparkoEmbeddedStd, task::scheduler::ScheduledTask, tz::TimeZone};
 
 use crate::mdns::MdnsResponder;
 use crate::{Feature, sparko_esp32_std::{SparkoEsp32Std, SparkoEsp32StdInitializer}};
-use sparko_platform::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
 
 
 pub const CORE_FEATURE_NAME: &str = "core";

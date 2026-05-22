@@ -8,7 +8,7 @@ use esp_idf_hal::ledc::{LedcTimer, LowSpeed, LedcChannel};
 use esp_idf_hal::{gpio::PinDriver, ledc::LedcDriver};
 use esp_idf_hal::units::*;
 
-use sparko_platform::Status;
+use sparko_embedded_std::Status;
 
 
 #[cfg(feature = "mono-led")]

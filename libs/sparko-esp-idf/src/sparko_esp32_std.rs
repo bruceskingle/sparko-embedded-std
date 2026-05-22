@@ -13,15 +13,15 @@ use esp_idf_hal::spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 use esp_idf_svc::{eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, http::{Method}, nvs::EspDefaultNvsPartition};
 use log::{error, info};
-use sparko_platform::platform::{SparkoEmbeddedStd, SparkoEmbeddedStdInitializer};
-use sparko_platform::{InitStatus, Status};
+use sparko_embedded_std::platform::{SparkoEmbeddedStd, SparkoEmbeddedStdInitializer};
+use sparko_embedded_std::{InitStatus, Status};
 
 #[cfg(feature = "display")]
-use sparko_platform::{DisplayOrientation, graphics::DisplayManager};
-use sparko_platform::config::Config;
-use sparko_platform::config_manager::{ConfigManager, ConfigManagerBuilder};
-use sparko_platform::{problem::ProblemManager, task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder}};
-use sparko_platform::http_server::HttpServerManager;
+use sparko_embedded_std::{DisplayOrientation, graphics::DisplayManager};
+use sparko_embedded_std::config::Config;
+use sparko_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
+use sparko_embedded_std::{problem::ProblemManager, task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder}};
+use sparko_embedded_std::http_server::HttpServerManager;
 use esp_idf_svc::sntp::*;
 use chrono::Local;
 

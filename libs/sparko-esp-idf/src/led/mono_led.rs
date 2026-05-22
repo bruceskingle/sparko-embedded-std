@@ -5,7 +5,7 @@ use std::time::Duration;
 use esp_idf_hal::gpio::OutputPin;
 
 use esp_idf_hal::gpio::PinDriver;
-use sparko_platform::Status;
+use sparko_embedded_std::Status;
 
 use crate::led::LedManager;
 

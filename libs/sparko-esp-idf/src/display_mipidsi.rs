@@ -6,7 +6,7 @@ use esp_idf_hal::{
     gpio::{PinDriver, Output},
     spi::SpiDeviceDriver,
 };
-use sparko_platform::graphics::{Color, DisplayManager};
+use sparko_embedded_std::graphics::{Color, DisplayManager};
 
 use crate::to_rgb565;
 

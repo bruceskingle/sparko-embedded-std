@@ -4,7 +4,7 @@ use std::{sync::{Arc, Mutex}, time::Duration};
 use embedded_graphics::{prelude::{Point, Size}, primitives::Rectangle};
 use log::info;
 use sparko_embedded_std::{DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager, listener::Listener, task::scheduler::ScheduledTask};
-use sparko_esp_std::{Feature, analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std, touch::axs5106l::TouchPoint};
+use sparko_esp_idf::{Feature, analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std, touch::axs5106l::TouchPoint};
 use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
 
 struct ImuFeature {
@@ -18,7 +18,7 @@ impl ImuFeature {
 }
 
 impl Feature for ImuFeature {
-    fn init(&self, init: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor>  {
+    fn init(&self, init: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor>  {
         info!("ImuFeature::init");
         let config = ConfigSpec::builder()
             .build();
@@ -29,7 +29,7 @@ impl Feature for ImuFeature {
         })
     }
 
-    fn start(&mut self, sparko: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32Std, initializer: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32StdInitializer, config: &sparko_embedded_std::config::Config) -> anyhow::Result<()> {
+    fn start(&mut self, sparko: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32Std, initializer: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer, config: &sparko_embedded_std::config::Config) -> anyhow::Result<()> {
         info!("ImuFeature::start");
         sparko.imu_manager.start(Duration::from_millis(50))?;
 
@@ -100,7 +100,7 @@ impl TouchDrawFeature {
 }
 
 impl Feature for TouchDrawFeature {
-    fn init(&self, init: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<FeatureDescriptor>  {
+    fn init(&self, init: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer) -> anyhow::Result<FeatureDescriptor>  {
         info!("TouchListener::init");
         let config = ConfigSpec::builder()
             .build();
@@ -111,7 +111,7 @@ impl Feature for TouchDrawFeature {
         })
     }
 
-    fn start(&mut self, sparko: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32Std, initializer: &mut sparko_esp_std::sparko_esp32_std::SparkoEsp32StdInitializer, config: &sparko_embedded_std::config::Config) -> anyhow::Result<()> {
+    fn start(&mut self, sparko: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32Std, initializer: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer, config: &sparko_embedded_std::config::Config) -> anyhow::Result<()> {
 
         let listener: Arc<dyn Listener<TouchPoint>>
          = Arc::new(TouchListener {
@@ -145,7 +145,7 @@ fn run() -> anyhow::Result<()> {
 
     let (builder, remainder) = SparkoEsp32Std::builder()?;
 
-    let smart_leds = sparko_esp_std::smart_led::new(
+    let smart_leds = sparko_esp_idf::smart_led::new(
         remainder.rmt.channel0,
         remainder.gpio6,
         64)?;

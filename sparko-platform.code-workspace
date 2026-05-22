@@ -1,0 +1,76 @@
+{
+	"folders": [
+		{
+			"name": "core",
+			"path": "libs/core"
+		},
+		{
+			"name": "esp-idf",
+			"path": "libs/esp-idf"
+		},
+		{
+			"name": "devkitv1",
+			"path": "examples/devkitv1"
+		},
+		{
+			"name": "cyd",
+			"path": "examples/cyd"
+		},
+		{
+			"name": "supermini-esp32c3",
+			"path": "examples/supermini-esp32c3"
+		},
+		{
+			"name": "wave-esp32c6touch147",
+			"path": "examples/wave-esp32c6touch147"
+		},
+		{
+			"name": "wave-esp32c6147",
+			"path": "examples/wave-esp32c6147"
+		},
+		{
+			"name": "xaio-esp32c6",
+			"path": "examples/xaio-esp32c6"
+		}
+	],
+	"settings": {
+		// "rust-analyzer.cargo.features": "all",
+		// "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
+		// "rust-analyzer.cargo.features": ["board-wave-esp32c6touch147", "tilt", "ahrs", "touch"],
+		// "rust-analyzer.cargo.features": ["board-wave-esp32c6147"],
+		// "rust-analyzer.cargo.target": "riscv32imac-esp-espidf",
+		// "rust-analyzer.cargo.extraEnv": {
+		// "MCU": "esp32c6"
+		// },
+		"rust-analyzer.cargo.features": [
+			"board-cyd"
+		],
+		// "rust-analyzer.cargo.features": ["board-devkitv1"],
+		"rust-analyzer.cargo.target": "xtensa-esp32-espidf",
+		"rust-analyzer.cargo.extraEnv": {
+			"MCU": "esp32"
+		},
+		// "rust-analyzer.cargo.features": ["board-supermini-esp32c3"],
+		// "rust-analyzer.cargo.target": "riscv32imc-esp-espidf",
+		// "rust-analyzer.cargo.extraEnv": {
+		// "MCU": "esp32c3"
+		// },
+		"editor.formatOnSave": true,
+		"cSpell.words": [
+			"Condvar",
+			"connecttest",
+			"croner",
+			"eventloop",
+			"heapless",
+			"Madgwick",
+			"maxlength",
+			"Mdns",
+			"schedulable",
+			"sntp",
+			"stylesheet",
+			"Timelike",
+			"tzset",
+			"xiao"
+		]
+	}
+}

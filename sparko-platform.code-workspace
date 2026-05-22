@@ -34,27 +34,32 @@
 		}
 	],
 	"settings": {
-		// "rust-analyzer.cargo.features": "all",
-		// "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
-		// "rust-analyzer.cargo.features": ["board-wave-esp32c6touch147", "tilt", "ahrs", "touch"],
-		// "rust-analyzer.cargo.features": ["board-wave-esp32c6147"],
-		// "rust-analyzer.cargo.target": "riscv32imac-esp-espidf",
-		// "rust-analyzer.cargo.extraEnv": {
-		// "MCU": "esp32c6"
-		// },
-		"rust-analyzer.cargo.features": [
-			"board-cyd"
+		"rust-analyzer.linkedProjects": [
+			"../../examples/xaio-esp32c6/Cargo.toml"
 		],
-		// "rust-analyzer.cargo.features": ["board-devkitv1"],
-		"rust-analyzer.cargo.target": "xtensa-esp32-espidf",
-		"rust-analyzer.cargo.extraEnv": {
-			"MCU": "esp32"
-		},
-		// "rust-analyzer.cargo.features": ["board-supermini-esp32c3"],
-		// "rust-analyzer.cargo.target": "riscv32imc-esp-espidf",
+		// // "rust-analyzer.cargo.features": "all",
+		// // "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6touch147", "tilt", "ahrs", "touch"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6147"],
+		// // "rust-analyzer.cargo.target": "riscv32imac-esp-espidf",
+		// // "rust-analyzer.cargo.extraEnv": {
+		// // "MCU": "esp32c6"
+		// // },
+		// "rust-analyzer.cargo.features": [
+		// 	// "board-cyd"
+		// 	"board-devkitv1"
+		// ],
+		// // "rust-analyzer.cargo.features": ["board-devkitv1"],
+		// "rust-analyzer.cargo.target": "xtensa-esp32-espidf",
 		// "rust-analyzer.cargo.extraEnv": {
-		// "MCU": "esp32c3"
+		// 	"MCU": "esp32"
 		// },
+		// // "rust-analyzer.cargo.features": ["board-supermini-esp32c3"],
+		// // "rust-analyzer.cargo.target": "riscv32imc-esp-espidf",
+		// // "rust-analyzer.cargo.extraEnv": {
+		// // "MCU": "esp32c3"
+		// // },
+		// // x
 		"editor.formatOnSave": true,
 		"cSpell.words": [
 			"Condvar",
@@ -81,6 +86,6 @@
 		"rust-analyzer.cargo.extraArgs": [
 			"--release"
 		],
-		"rust-analyzer.checkOnSave": false
+		"rust-analyzer.checkOnSave": true
 	}
 }

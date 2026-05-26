@@ -38,6 +38,7 @@
 		}
 	],
 	"settings": {
+		"explorer.autoReveal": false,
 		"files.exclude": {
 			"libs": true,
 			"examples": true,

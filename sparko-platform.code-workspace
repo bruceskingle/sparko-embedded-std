@@ -1,6 +1,10 @@
 {
 	"folders": [
 		{
+			"name": "Root Files",
+			"path": "."
+		},
+		{
 			"name": "sparko-embedded-std",
 			"path": "libs/sparko-embedded-std"
 		},
@@ -29,13 +33,19 @@
 			"path": "examples/wave-esp32c6147"
 		},
 		{
-			"name": "xaio-esp32c6",
-			"path": "examples/xaio-esp32c6"
+			"name": "xiao-esp32c6",
+			"path": "examples/xiao-esp32c6"
 		}
 	],
 	"settings": {
+		"files.exclude": {
+			"libs": true,
+			"examples": true,
+			".vscode": true,
+			"target": true
+		},
 		"rust-analyzer.linkedProjects": [
-			"../../examples/xaio-esp32c6/Cargo.toml"
+			"../../examples/xiao-esp32c6/Cargo.toml"
 		],
 		// // "rust-analyzer.cargo.features": "all",
 		// // "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
@@ -65,6 +75,8 @@
 			"Condvar",
 			"connecttest",
 			"croner",
+			"devkitv",
+			"dyndns",
 			"eventloop",
 			"heapless",
 			"Madgwick",
@@ -74,8 +86,7 @@
 			"sntp",
 			"stylesheet",
 			"Timelike",
-			"tzset",
-			"xiao"
+			"tzset"
 		],
 		"rust-analyzer.check.overrideCommand": [
 			"cargo",

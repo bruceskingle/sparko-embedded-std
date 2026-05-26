@@ -13,10 +13,10 @@ fn main() -> anyhow::Result<()> {
         64,
     )?;
 
-    let sparko_esp32 = builder
+    let platform = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
         .build()?;
 
-    sparko_esp32.start()
+    platform.start()
 }

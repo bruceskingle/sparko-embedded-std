@@ -7,6 +7,8 @@ use std::{
     thread,
 };
 
+#[cfg(feature = "mipi-dsi-display")]
+use crate::display::mipi_dsi_display_manager;
 #[cfg(feature = "board-supermini-esp32c3")]
 use esp_idf_hal::gpio::AnyIOPin;
 #[cfg(feature = "mipi-dsi-display")]
@@ -768,7 +770,7 @@ impl Esp32PlatformBuilder {
                 }
             };
 
-            let di = crate::display_mipidsi::EspDi {
+            let di = mipi_dsi_display_manager::EspDi {
                 spi: self.spi,
                 dc: self.dc,
                 xoffset: 0,
@@ -789,7 +791,7 @@ impl Esp32PlatformBuilder {
             // enable back_light
             self.back_light.set_high()?;
 
-            display_manager = crate::display_mipidsi::MipiDsiDisplayManager {
+            display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
                 display,
             };
@@ -834,7 +836,7 @@ impl Esp32PlatformBuilder {
                 }
             };
 
-            let di = crate::display_mipidsi::EspDi {
+            let di = mipi_dsi_display_manager::EspDi {
                 spi: self.spi,
                 dc: self.dc,
                 xoffset,
@@ -857,7 +859,7 @@ impl Esp32PlatformBuilder {
             // enable back_light
             self.back_light.set_high()?;
 
-            display_manager = crate::display_mipidsi::MipiDsiDisplayManager {
+            display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
                 display,
             };
@@ -897,7 +899,7 @@ impl Esp32PlatformBuilder {
                 }
             };
 
-            let di = crate::display_mipidsi::EspDi {
+            let di = mipi_dsi_display_manager::EspDi {
                 spi: self.spi,
                 dc: self.dc,
                 xoffset,
@@ -919,7 +921,7 @@ impl Esp32PlatformBuilder {
             // enable back_light
             self.back_light.set_high()?;
 
-            display_manager = crate::display_mipidsi::MipiDsiDisplayManager {
+            display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
                 display,
             };
@@ -1076,7 +1078,7 @@ pub struct Esp32Platform {
     core_config_valid: bool,
 
     #[cfg(feature = "mipi-dsi-display")]
-    pub display_manager: Arc<Mutex<crate::display_mipidsi::MipiDsiDisplayManager>>,
+    pub display_manager: Arc<Mutex<mipi_dsi_display_manager::MipiDsiDisplayManager>>,
     #[cfg(feature = "i2c")]
     i2c: Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>>,
     #[cfg(feature = "qmi8658")]

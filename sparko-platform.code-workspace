@@ -47,10 +47,10 @@
 		},
 		"rust-analyzer.linkedProjects": [
 			// "examples/wave-esp32c6touch147/Cargo.toml"
-			"examples/cyd/Cargo.toml"
+			// "examples/cyd/Cargo.toml"
 			// "examples/devkitv1/Cargo.toml"
 			// "examples/supermini-esp32c3/Cargo.toml"
-			// "examples/wave-esp32c6147/Cargo.toml"
+			"examples/wave-esp32c6147/Cargo.toml"
 			// "examples/wave-esp32c6touch147/Cargo.toml"
 			// "examples/xiao-esp32c6/Cargo.toml"
 		],
@@ -89,6 +89,7 @@
 			"Madgwick",
 			"maxlength",
 			"Mdns",
+			"mipi",
 			"schedulable",
 			"sntp",
 			"stylesheet",

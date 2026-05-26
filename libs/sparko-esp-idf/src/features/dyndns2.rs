@@ -14,8 +14,8 @@ use sparko_embedded_std::config::TypedValue;
 use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
 
-use crate::esp32_platform::Esp32Platform;
-use crate::esp32_platform::Esp32PlatformInitializer;
+use crate::Esp32Platform;
+use crate::Esp32PlatformInitializer;
 use crate::{Feature, FeatureDescriptor};
 
 //                                           123456789012345<-------- Max Name Length 15
@@ -69,7 +69,7 @@ impl DynDns2 {
 impl Feature for DynDns2 {
     fn init(
         &self,
-        _initializer: &mut crate::esp32_platform::Esp32PlatformInitializer,
+        _initializer: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("DynDns2::init()");
         let config = ConfigSpec::builder()

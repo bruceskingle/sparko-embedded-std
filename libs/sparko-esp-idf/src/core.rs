@@ -57,7 +57,7 @@ impl Core {
 impl Feature for Core {
     fn init(
         &self,
-        _init: &mut crate::esp32_platform::Esp32PlatformInitializer,
+        _init: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         let config = ConfigSpec::builder()
             .with(

@@ -3,12 +3,13 @@ use std::fmt::Display;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use sparko_embedded_std::{config::Config, feature::FeatureDescriptor, graphics::Color};
 
-pub mod esp32_platform;
+mod esp32_platform;
+pub use esp32_platform::*;
 
 mod commands;
 mod config_store;
 mod core;
-pub mod dyndns2;
+pub mod features;
 mod http;
 #[cfg(feature = "led")]
 mod led;
@@ -22,14 +23,6 @@ pub mod touch;
 
 #[cfg(any(feature = "tilt", feature = "ahrs"))]
 pub mod ahrs;
-
-pub mod binary_clock_feature;
-
-#[cfg(feature = "display")]
-pub mod analog_clock_feature;
-
-#[cfg(feature = "mipi-dsi-display")]
-mod display_mipidsi;
 
 #[cfg(feature = "display")]
 mod display;
@@ -48,14 +41,11 @@ where
 }
 
 pub trait Feature {
-    fn init(
-        &self,
-        init: &mut esp32_platform::Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor>;
+    fn init(&self, init: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor>;
     fn start(
         &mut self,
-        sparko: &mut esp32_platform::Esp32Platform,
-        initializer: &mut esp32_platform::Esp32PlatformInitializer,
+        sparko: &mut Esp32Platform,
+        initializer: &mut Esp32PlatformInitializer,
         config: &Config,
     ) -> anyhow::Result<()>;
 }

@@ -5,8 +5,9 @@ use esp_idf_hal::{
 };
 use log::info;
 use sparko_esp_idf::{
-    binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, smart_led::SmartLedsSpi,
-    sparko_esp32_std::Esp32Platform,
+    Esp32Platform,
+    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
+    smart_led::SmartLedsSpi,
 };
 
 fn main() {
@@ -86,8 +87,8 @@ fn run() -> anyhow::Result<()> {
 
     let mut sparko_esp32 = builder
         .with_feature(Box::new(DynDns2::new()?))?
-        // .with_feature(Box::new(BinaryClockFeature::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
-        .with_feature(Box::new(BinaryClockFeature::new_spi(smart_leds)))?
+        // .with_feature(Box::new(BinaryClock::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
+        .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

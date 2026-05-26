@@ -4,8 +4,8 @@ use embedded_graphics::{
 };
 use sparko_embedded_std::DisplayOrientation;
 use sparko_esp_idf::{
-    analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2,
-    sparko_esp32_std::Esp32Platform,
+    Esp32Platform,
+    features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
 };
 
 fn main() {
@@ -60,7 +60,7 @@ fn run() -> anyhow::Result<()> {
                 .build()?,
         ))?
         .with_display_orientation(DisplayOrientation::Rotate270)?
-        .with_feature(Box::new(BinaryClockFeature::new_rmt(smart_leds)))?
+        .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

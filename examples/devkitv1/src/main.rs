@@ -1,5 +1,6 @@
 use sparko_esp_idf::{
-    binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::Esp32Platform,
+    Esp32Platform,
+    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
 };
 
 fn main() -> anyhow::Result<()> {
@@ -14,7 +15,7 @@ fn main() -> anyhow::Result<()> {
 
     let sparko_esp32 = builder
         .with_feature(Box::new(DynDns2::new()?))?
-        .with_feature(Box::new(BinaryClockFeature::new_spi(smart_leds)))?
+        .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
         .build()?;
 
     sparko_esp32.start()

@@ -1,5 +1,5 @@
-use crate::esp32_platform::Esp32Platform;
-use crate::esp32_platform::Esp32PlatformInitializer;
+use crate::Esp32Platform;
+use crate::Esp32PlatformInitializer;
 use crate::{Feature, FeatureDescriptor};
 use embedded_graphics::prelude::Point;
 use embedded_graphics::prelude::Size;

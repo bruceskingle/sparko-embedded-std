@@ -8,11 +8,11 @@ use smart_leds::{
     RGB8, SmartLedsWrite,
     hsv::{Hsv, hsv2rgb},
 };
-use sparko_esp_idf::binary_clock_feature::BinaryClockFeature;
-use sparko_esp_idf::{
-    analog_clock_feature::AnalogClock, dyndns2::DynDns2, esp32_platform::Esp32Platform,
-};
-use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
+// use sparko_esp_idf::binary_clock_feature::BinaryClock;
+use sparko_esp_idf::Esp32Platform;
+use sparko_esp_idf::features::analog_clock::AnalogClock;
+use sparko_esp_idf::features::binary_clock::BinaryClock;
+use sparko_esp_idf::features::dyndns2::DynDns2;
 
 fn main() {
     log::info!("Hello, world!");
@@ -66,8 +66,8 @@ fn run() -> anyhow::Result<()> {
 
     // let mut sparko_esp32 = builder
     //     .with_feature(Box::new(DynDns2::new()?))?
-    //     // .with_feature(Box::new(BinaryClockFeature::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
-    //     .with_feature(Box::new(BinaryClockFeature::new_spi(smart_leds)))?
+    //     // .with_feature(Box::new(BinaryClock::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
+    //     .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
     //     .build()?;
 
     let mut sparko_esp32 = builder
@@ -84,7 +84,7 @@ fn run() -> anyhow::Result<()> {
                 // })
                 .build()?,
         ))?
-        .with_feature(Box::new(BinaryClockFeature::new_spi(smart_leds)))?
+        .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
         .with_display_orientation(sparko_embedded_std::DisplayOrientation::Rotate0)?
         .build()?;
 

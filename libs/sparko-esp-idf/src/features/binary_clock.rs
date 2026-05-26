@@ -33,8 +33,8 @@ use esp_idf_svc::hal::rmt::RmtChannel;
 // use smart_leds::{RGB8, SmartLedsWrite, hsv::{Hsv, hsv2rgb}};
 // use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
-use crate::esp32_platform::Esp32Platform;
-use crate::esp32_platform::Esp32PlatformInitializer;
+use crate::Esp32Platform;
+use crate::Esp32PlatformInitializer;
 use crate::smart_led::SmartLeds;
 use crate::smart_led::SmartLedsRmt;
 use crate::smart_led::SmartLedsSpi;
@@ -229,7 +229,7 @@ impl BinaryClockConfig {
     }
 }
 
-pub struct BinaryClockFeature<T: SmartLeds> {
+pub struct BinaryClock<T: SmartLeds> {
     task: Option<ClockTask<T>>,
 }
 
@@ -237,35 +237,35 @@ pub struct BinaryClockFeature<T: SmartLeds> {
 //     crate::smart_led::required_spi_transfer_size(64) // WARNING: hardcoded for 64 LEDs, should be configurable
 // }
 
-impl<'d> BinaryClockFeature<SmartLedsRmt<'d>> {
-    pub fn new_rmt(smart_leds: SmartLedsRmt<'d>) -> BinaryClockFeature<SmartLedsRmt<'d>> {
+impl<'d> BinaryClock<SmartLedsRmt<'d>> {
+    pub fn new_rmt(smart_leds: SmartLedsRmt<'d>) -> BinaryClock<SmartLedsRmt<'d>> {
         let x = ClockTask::new_rmt(smart_leds);
-        BinaryClockFeature { task: Some(x) }
+        BinaryClock { task: Some(x) }
     }
 }
 
-// impl<'d, T> BinaryClockFeature<'d, T>
+// impl<'d, T> BinaryClock<'d, T>
 // where
 //     T: Borrow<SpiDriver<'d>> + 'd,
 
 // impl <SmartLedsSpi<'static>>
-impl<'d, T> BinaryClockFeature<SmartLedsSpi<'d, T>>
+impl<'d, T> BinaryClock<SmartLedsSpi<'d, T>>
 where
     T: Borrow<SpiDriver<'d>> + 'd,
 {
-    pub fn new_spi(smart_leds: SmartLedsSpi<'d, T>) -> BinaryClockFeature<SmartLedsSpi<'d, T>>
+    pub fn new_spi(smart_leds: SmartLedsSpi<'d, T>) -> BinaryClock<SmartLedsSpi<'d, T>>
     where
         T: Borrow<SpiDriver<'d>> + 'd,
     {
         let x = ClockTask::new_spi(smart_leds);
-        BinaryClockFeature { task: Some(x) }
+        BinaryClock { task: Some(x) }
     }
 }
 
-impl<T: SmartLeds + 'static> Feature for BinaryClockFeature<T> {
+impl<T: SmartLeds + 'static> Feature for BinaryClock<T> {
     fn init(
         &self,
-        _initializer: &mut crate::esp32_platform::Esp32PlatformInitializer,
+        _initializer: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("BinaryClock::init()");
         let config = ConfigSpec::builder()

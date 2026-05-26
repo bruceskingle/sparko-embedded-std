@@ -45,7 +45,7 @@
 			"target": true
 		},
 		"rust-analyzer.linkedProjects": [
-			"../../examples/xiao-esp32c6/Cargo.toml"
+			"examples/xiao-esp32c6/Cargo.toml"
 		],
 		// // "rust-analyzer.cargo.features": "all",
 		// // "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],

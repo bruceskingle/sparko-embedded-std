@@ -2,21 +2,7 @@ use sparko_esp_idf::{
     binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std,
 };
 
-fn main() {
-    log::info!("Hello, world!");
-
-    // This is the app level fault barrier.
-    // For the moment we just unwrap and panic, but in the future we might want to attempt some sort of recovery or restart.
-    match run() {
-        Ok(()) => log::info!("Application finished successfully"),
-        Err(e) => {
-            log::error!("Application failed with error: {}", e);
-            panic!("App failed");
-        }
-    }
-}
-
-fn run() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     // let mut builder = SparkoCyd::Builder::new();
 
     // let mut sparko_cyd = builder
@@ -80,7 +66,6 @@ fn run() -> anyhow::Result<()> {
     //         Ok(())
     //     })?;
 
-    log::info!("Trace 2");
     sparko_esp32.start()
     // ?;
     // sparko_cyd.run()

@@ -6,7 +6,7 @@ use esp_idf_hal::{
 use log::info;
 use sparko_esp_idf::{
     binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, smart_led::SmartLedsSpi,
-    sparko_esp32_std::SparkoEsp32Std,
+    sparko_esp32_std::Esp32Platform,
 };
 
 fn main() {
@@ -50,7 +50,7 @@ fn run() -> anyhow::Result<()> {
     // let mut sparko_cyd = builder
     //     .with_feature(DynDns2::new())
     //     .build()?;
-    let (builder, mut remainder) = SparkoEsp32Std::builder()?;
+    let (builder, mut remainder) = Esp32Platform::builder()?;
 
     // let driver = SpiDriver::new(
     //     remainder.spi2,

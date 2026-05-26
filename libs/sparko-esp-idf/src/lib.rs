@@ -3,7 +3,7 @@ use std::fmt::Display;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use sparko_embedded_std::{config::Config, feature::FeatureDescriptor, graphics::Color};
 
-pub mod sparko_esp32_std;
+pub mod esp32_platform;
 
 mod commands;
 mod config_store;
@@ -50,12 +50,12 @@ where
 pub trait Feature {
     fn init(
         &self,
-        init: &mut sparko_esp32_std::SparkoEsp32StdInitializer,
+        init: &mut esp32_platform::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor>;
     fn start(
         &mut self,
-        sparko: &mut sparko_esp32_std::SparkoEsp32Std,
-        initializer: &mut sparko_esp32_std::SparkoEsp32StdInitializer,
+        sparko: &mut esp32_platform::Esp32Platform,
+        initializer: &mut esp32_platform::Esp32PlatformInitializer,
         config: &Config,
     ) -> anyhow::Result<()>;
 }

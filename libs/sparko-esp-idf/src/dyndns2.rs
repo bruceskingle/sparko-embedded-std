@@ -11,11 +11,11 @@ use sparko_embedded_std::config::Config;
 use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config::ConfigSpecValue;
 use sparko_embedded_std::config::TypedValue;
-use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
 
-use crate::sparko_esp32_std::SparkoEsp32Std;
-use crate::sparko_esp32_std::SparkoEsp32StdInitializer;
+use crate::esp32_platform::Esp32Platform;
+use crate::esp32_platform::Esp32PlatformInitializer;
 use crate::{Feature, FeatureDescriptor};
 
 //                                           123456789012345<-------- Max Name Length 15
@@ -69,7 +69,7 @@ impl DynDns2 {
 impl Feature for DynDns2 {
     fn init(
         &self,
-        _initializer: &mut crate::sparko_esp32_std::SparkoEsp32StdInitializer,
+        _initializer: &mut crate::esp32_platform::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("DynDns2::init()");
         let config = ConfigSpec::builder()
@@ -113,8 +113,8 @@ impl Feature for DynDns2 {
 
     fn start(
         &mut self,
-        _sparko: &mut SparkoEsp32Std,
-        initializer: &mut SparkoEsp32StdInitializer,
+        _sparko: &mut Esp32Platform,
+        initializer: &mut Esp32PlatformInitializer,
         config: &Config,
     ) -> anyhow::Result<()> {
         let resolve_task = ResolveTask::new(config)?;
@@ -134,8 +134,8 @@ pub struct ResolveTask {
     cnt: u32,
 }
 
-impl ScheduledTask<SparkoEsp32Std> for ResolveTask {
-    fn run(&mut self, _sparko_cyd: &mut SparkoEsp32Std) -> anyhow::Result<()> {
+impl ScheduledTask<Esp32Platform> for ResolveTask {
+    fn run(&mut self, _sparko_cyd: &mut Esp32Platform) -> anyhow::Result<()> {
         self.execute()
     }
 

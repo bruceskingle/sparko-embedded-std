@@ -10,7 +10,7 @@ use smart_leds::{
 };
 use sparko_esp_idf::binary_clock_feature::BinaryClockFeature;
 use sparko_esp_idf::{
-    analog_clock_feature::AnalogClock, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std,
+    analog_clock_feature::AnalogClock, dyndns2::DynDns2, esp32_platform::Esp32Platform,
 };
 use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
@@ -54,7 +54,7 @@ fn to_bits(pixels: &mut [RGB8], index: usize, bits: usize, off: RGB8, on: RGB8, 
 }
 
 fn run() -> anyhow::Result<()> {
-    let (builder, remainder) = SparkoEsp32Std::builder()?;
+    let (builder, remainder) = Esp32Platform::builder()?;
 
     let smart_leds = sparko_esp_idf::smart_led::new(
         remainder.spi3,

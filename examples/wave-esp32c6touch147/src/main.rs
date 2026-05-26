@@ -8,14 +8,14 @@ use embedded_graphics::{
     primitives::Rectangle,
 };
 use log::info;
-use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::{
     config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager, listener::Listener,
     task::scheduler::ScheduledTask, DisplayOrientation,
 };
 use sparko_esp_idf::{
     analog_clock_feature::AnalogClock, binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2,
-    sparko_esp32_std::SparkoEsp32Std, touch::axs5106l::TouchPoint, Feature,
+    sparko_esp32_std::Esp32Platform, touch::axs5106l::TouchPoint, Feature,
 };
 
 struct ImuFeature {}
@@ -29,7 +29,7 @@ impl ImuFeature {
 impl Feature for ImuFeature {
     fn init(
         &self,
-        init: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer,
+        init: &mut sparko_esp_idf::sparko_esp32_std::Esp32PlatformInitializer,
     ) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor> {
         info!("ImuFeature::init");
         let config = ConfigSpec::builder().build();
@@ -42,8 +42,8 @@ impl Feature for ImuFeature {
 
     fn start(
         &mut self,
-        sparko: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32Std,
-        initializer: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer,
+        sparko: &mut sparko_esp_idf::sparko_esp32_std::Esp32Platform,
+        initializer: &mut sparko_esp_idf::sparko_esp32_std::Esp32PlatformInitializer,
         config: &sparko_embedded_std::config::Config,
     ) -> anyhow::Result<()> {
         info!("ImuFeature::start");
@@ -59,7 +59,7 @@ impl Feature for ImuFeature {
 
 struct ImuTask {}
 
-impl ScheduledTask<SparkoEsp32Std> for ImuTask {
+impl ScheduledTask<Esp32Platform> for ImuTask {
     // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
@@ -68,7 +68,7 @@ impl ScheduledTask<SparkoEsp32Std> for ImuTask {
         "IMU Logger"
     }
 
-    fn run(&mut self, sparko_embedded: &mut SparkoEsp32Std) -> anyhow::Result<()> {
+    fn run(&mut self, sparko_embedded: &mut Esp32Platform) -> anyhow::Result<()> {
         let attitude = sparko_embedded.imu_manager.read_attitude();
         let tilt = sparko_embedded.imu_manager.read_tilt();
 
@@ -111,7 +111,7 @@ impl TouchDrawFeature {
 impl Feature for TouchDrawFeature {
     fn init(
         &self,
-        init: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer,
+        init: &mut sparko_esp_idf::sparko_esp32_std::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("TouchListener::init");
         let config = ConfigSpec::builder().build();
@@ -124,8 +124,8 @@ impl Feature for TouchDrawFeature {
 
     fn start(
         &mut self,
-        sparko: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32Std,
-        initializer: &mut sparko_esp_idf::sparko_esp32_std::SparkoEsp32StdInitializer,
+        sparko: &mut sparko_esp_idf::sparko_esp32_std::Esp32Platform,
+        initializer: &mut sparko_esp_idf::sparko_esp32_std::Esp32PlatformInitializer,
         config: &sparko_embedded_std::config::Config,
     ) -> anyhow::Result<()> {
         let listener: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchListener {
@@ -139,7 +139,7 @@ impl Feature for TouchDrawFeature {
 }
 
 fn main() -> anyhow::Result<()> {
-    let (builder, remainder) = SparkoEsp32Std::builder()?;
+    let (builder, remainder) = Esp32Platform::builder()?;
 
     let smart_leds = sparko_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio6, 64)?;
 

@@ -1,5 +1,5 @@
 use sparko_esp_idf::{
-    binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::SparkoEsp32Std,
+    binary_clock_feature::BinaryClockFeature, dyndns2::DynDns2, sparko_esp32_std::Esp32Platform,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     // let mut sparko_cyd = builder
     //     .with_feature(DynDns2::new())
     //     .build()?;
-    let (builder, remainder) = SparkoEsp32Std::builder()?;
+    let (builder, remainder) = Esp32Platform::builder()?;
 
     let smart_leds = sparko_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio21, 64)?;
     let mut sparko_esp32 = builder

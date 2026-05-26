@@ -26,18 +26,18 @@ use sparko_embedded_std::config::ConfigSpecValue;
 use sparko_embedded_std::config::TypedValue;
 use sparko_embedded_std::graphics::ClockRenderer;
 use sparko_embedded_std::graphics::DisplayManager;
-use sparko_embedded_std::platform::SparkoEmbeddedStdInitializer;
+use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
 
 use esp_idf_svc::hal::rmt::RmtChannel;
 // use smart_leds::{RGB8, SmartLedsWrite, hsv::{Hsv, hsv2rgb}};
 // use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
+use crate::esp32_platform::Esp32Platform;
+use crate::esp32_platform::Esp32PlatformInitializer;
 use crate::smart_led::SmartLeds;
 use crate::smart_led::SmartLedsRmt;
 use crate::smart_led::SmartLedsSpi;
-use crate::sparko_esp32_std::SparkoEsp32Std;
-use crate::sparko_esp32_std::SparkoEsp32StdInitializer;
 use crate::{Feature, FeatureDescriptor};
 
 //                                           123456789012345<-------- Max Name Length 15
@@ -265,7 +265,7 @@ where
 impl<T: SmartLeds + 'static> Feature for BinaryClockFeature<T> {
     fn init(
         &self,
-        _initializer: &mut crate::sparko_esp32_std::SparkoEsp32StdInitializer,
+        _initializer: &mut crate::esp32_platform::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("BinaryClock::init()");
         let config = ConfigSpec::builder()
@@ -288,8 +288,8 @@ impl<T: SmartLeds + 'static> Feature for BinaryClockFeature<T> {
 
     fn start(
         &mut self,
-        sparko: &mut SparkoEsp32Std,
-        initializer: &mut SparkoEsp32StdInitializer,
+        sparko: &mut Esp32Platform,
+        initializer: &mut Esp32PlatformInitializer,
         config: &Config,
     ) -> anyhow::Result<()> {
         match self.task.take() {
@@ -354,7 +354,7 @@ impl<T: SmartLeds> ClockTask<T> {
     }
 }
 
-impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T> {
+impl<T: SmartLeds> ScheduledTask<Esp32Platform> for ClockTask<T> {
     // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
@@ -363,7 +363,7 @@ impl<T: SmartLeds> ScheduledTask<SparkoEsp32Std> for ClockTask<T> {
         "Binary Clock"
     }
 
-    fn run(&mut self, sparko_embedded: &mut SparkoEsp32Std) -> anyhow::Result<()> {
+    fn run(&mut self, sparko_embedded: &mut Esp32Platform) -> anyhow::Result<()> {
         // let mut i: u8 = 0;
         // for j in 0..self.i {
         //     self.smart_leds.set_pixel_rgb(j, RGB8 {r: 0, g: 0, b: 0})?;

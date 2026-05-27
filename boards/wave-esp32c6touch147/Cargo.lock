@@ -1956,6 +1956,7 @@ dependencies = [
  "heapless 0.9.3",
  "indexmap",
  "log",
+ "rgb",
 ]
 
 [[package]]

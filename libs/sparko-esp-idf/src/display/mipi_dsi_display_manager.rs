@@ -1,4 +1,5 @@
 use embedded_graphics::{
+    pixelcolor::Rgb565,
     prelude::*,
     primitives::{PrimitiveStyle, Rectangle},
 };
@@ -10,7 +11,7 @@ use sparko_embedded_std::graphics::{Color, DisplayManager};
 
 #[cfg(feature = "board-cyd")]
 use crate::display::mipi_dsi_display_manager;
-use crate::to_rgb565;
+use crate::{rgb565_from_rgb8, to_rgb565};
 
 pub struct EspDi {
     pub spi: SpiDeviceDriver<'static, esp_idf_hal::spi::SpiDriver<'static>>,
@@ -195,5 +196,9 @@ impl DisplayManager for MipiDsiDisplayManager {
 
     fn map_color(&self, color: &Color) -> <Self::Display as DrawTarget>::Color {
         to_rgb565(color)
+    }
+
+    fn map_rgb8(&self, color: &rgb::RGB8) -> <Self::Display as DrawTarget>::Color {
+        rgb565_from_rgb8(color)
     }
 }

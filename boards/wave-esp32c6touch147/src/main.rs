@@ -10,14 +10,13 @@ use embedded_graphics::{
 use log::info;
 use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::{
-    config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager, listener::Listener,
-    task::scheduler::ScheduledTask, DisplayOrientation,
+    DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager,
+    listener::Listener, task::scheduler::ScheduledTask,
 };
 use sparko_esp_idf::{
-    Esp32Platform,
+    Esp32Platform, Feature,
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
     touch::axs5106l::TouchPoint,
-    Feature,
 };
 
 struct ImuFeature {}
@@ -62,7 +61,7 @@ impl Feature for ImuFeature {
 struct ImuTask {}
 
 impl ScheduledTask<Esp32Platform> for ImuTask {
-    // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    // fn run(&mut self, _sparko_cyd: &dyn Esp32Platform) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
 
@@ -85,7 +84,6 @@ struct TouchListener<DM: DisplayManager + Send + 'static> {
 
 impl<DM: DisplayManager + Send + 'static> Listener<TouchPoint> for TouchListener<DM> {
     fn on_event(&self, event: &TouchPoint) {
-        use embedded_graphics::prelude::RgbColor;
         use embedded_graphics::Drawable;
 
         let mut manager = self.display_manager.lock().unwrap();

@@ -1,5 +1,6 @@
-use embedded_graphics::prelude::DrawTarget;
 use anyhow::Result;
+use embedded_graphics::prelude::DrawTarget;
+use rgb::RGB8;
 
 use crate::{InitStatus, Status};
 
@@ -17,7 +18,6 @@ pub enum Color {
     White,
 }
 
-
 pub trait DrawTargetResultExt<T> {
     fn anyhow(self) -> Result<T>;
 }
@@ -32,16 +32,14 @@ pub trait DisplayManager {
     type Display: DrawTarget;
 
     fn display(&mut self) -> &mut Self::Display;
-    
+
     fn set_status(&mut self, status: &Status) -> anyhow::Result<()> {
-        match status  {
-            Status::Initializing(init_status) => {
-                match init_status {
-                    InitStatus::Starting => self.fill_color(Color::Yellow),
-                    InitStatus::AwaitingClientIpAddress => self.fill_color(Color::Magenta),
-                    InitStatus::AwaitingTimeSync => self.fill_color(Color::Cyan),
-                    InitStatus::StartingFeatures => self.fill_color(Color::Black),
-                }
+        match status {
+            Status::Initializing(init_status) => match init_status {
+                InitStatus::Starting => self.fill_color(Color::Yellow),
+                InitStatus::AwaitingClientIpAddress => self.fill_color(Color::Magenta),
+                InitStatus::AwaitingTimeSync => self.fill_color(Color::Cyan),
+                InitStatus::StartingFeatures => self.fill_color(Color::Black),
             },
             Status::Running => Ok(()),
             Status::Setup => self.fill_color(Color::Blue),
@@ -52,4 +50,6 @@ pub trait DisplayManager {
     fn fill_color(&mut self, color: Color) -> anyhow::Result<()>;
 
     fn map_color(&self, color: &Color) -> <Self::Display as DrawTarget>::Color;
+
+    fn map_rgb8(&self, color: &RGB8) -> <Self::Display as DrawTarget>::Color;
 }

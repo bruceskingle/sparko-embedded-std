@@ -355,7 +355,7 @@ impl<T: SmartLeds> ClockTask<T> {
 }
 
 impl<T: SmartLeds> ScheduledTask<Esp32Platform> for ClockTask<T> {
-    // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    // fn run(&mut self, _sparko_cyd: &dyn Esp32Platform) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
 

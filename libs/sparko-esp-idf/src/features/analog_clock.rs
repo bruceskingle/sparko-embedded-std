@@ -7,11 +7,13 @@ use embedded_graphics::primitives::Rectangle;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::http::client::EspHttpConnection;
 use log::info;
+use rgb::RGB8;
 use sparko_embedded_std::Layout;
 use sparko_embedded_std::config::Config;
 use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config::ConfigSpecValue;
 use sparko_embedded_std::config::TypedValue;
+use sparko_embedded_std::config::parse_rgb8;
 use sparko_embedded_std::graphics::ClockRenderer;
 use sparko_embedded_std::graphics::DisplayManager;
 use sparko_embedded_std::platform::PlatformInitializer;
@@ -22,17 +24,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-//                                           123456789012345<-------- Max Name Length 15
-// pub const USER_NAME: &str =                 "user_name";
-// pub const PASSWORD: &str =                  "password";
-// pub const HOSTNAME: &str =                  "hostname";
-// pub const BASE_SERVICE_URL: &str =          "base_url";
-// pub const GET_IP_URL: &str =                "get_ip_url";
-// pub const GET_REQUIRES_STRIP: &str =        "get_req_strip";
-// pub const UPDATE_URL: &str =                "update_url";
-// pub const UPDATE_REQUIRES_ADDRESS: &str =   "upd_req_addr";
-// pub const UPDATE_INTERVAL: &str =           "upd_int";
-// pub const SCHEDULE: &str =                  "schedule";
+//                                          123456789012345<-------- Max Name Length 15
+pub const CLOCK_COLOR: &str = "clock_color";
+pub const BG_COLOR: &str = "bg_color";
 
 pub struct AnalogClockBuilder {
     layout: Option<Layout>,
@@ -77,15 +71,14 @@ impl Feature for AnalogClock {
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("AnalogClock::init()");
         let config = ConfigSpec::builder()
-            // .with(USER_NAME.to_string(), ConfigSpecValue::new(TypedValue::String(32, None), true))?
-            // .with(PASSWORD.to_string(), ConfigSpecValue::new(TypedValue::String(32, None), true))?
-            // .with(HOSTNAME.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // // .with(BASE_SERVICE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // .with(GET_IP_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // // .with(GET_REQUIRES_STRIP.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false))?
-            // .with(UPDATE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // .with(UPDATE_REQUIRES_ADDRESS.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false ))?
-            // .with(SCHEDULE.to_string(), ConfigSpecValue::new(TypedValue::Cron(None), true))?
+            .with(
+                CLOCK_COLOR.to_string(),
+                ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#00ff00")?)), true),
+            )?
+            .with(
+                BG_COLOR.to_string(),
+                ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#000000")?)), true),
+            )?
             .build();
 
         Ok(FeatureDescriptor {
@@ -100,9 +93,35 @@ impl Feature for AnalogClock {
         initializer: &mut Esp32PlatformInitializer,
         config: &Config,
     ) -> anyhow::Result<()> {
+        let clock_color = match config.map.get(CLOCK_COLOR) {
+            Some(color) => {
+                if let TypedValue::Color(Some(val)) = color {
+                    val
+                } else {
+                    &RGB8 { r: 0, g: 255, b: 0 }
+                }
+            }
+            None => &RGB8 { r: 0, g: 255, b: 0 },
+        };
+
+        let bg_color = match config.map.get(BG_COLOR) {
+            Some(color) => {
+                if let TypedValue::Color(Some(val)) = color {
+                    val
+                } else {
+                    &RGB8 { r: 0, g: 0, b: 0 }
+                }
+            }
+            None => &RGB8 { r: 0, g: 0, b: 0 },
+        };
         initializer.add_task(
             Box::new(ResolveTask {
-                clock_renderer: ClockRenderer::new(&sparko.display_manager, self.layout)?,
+                clock_renderer: ClockRenderer::new(
+                    &sparko.display_manager,
+                    self.layout,
+                    clock_color,
+                    bg_color,
+                )?,
             }),
             "* * * * * *",
         )?;
@@ -121,7 +140,7 @@ impl<DM> ScheduledTask<Esp32Platform> for ResolveTask<DM>
 where
     DM: DisplayManager,
 {
-    // fn run(&mut self, _sparko_cyd: &dyn SparkoEmbeddedStd) -> anyhow::Result<()> {
+    // fn run(&mut self, _sparko_cyd: &dyn Esp32Platform) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
 

@@ -14,45 +14,47 @@
 		},
 		{
 			"name": "devkitv1",
-			"path": "examples/devkitv1"
+			"path": "boards/devkitv1"
 		},
 		{
 			"name": "cyd",
-			"path": "examples/cyd"
+			"path": "boards/cyd"
 		},
 		{
 			"name": "supermini-esp32c3",
-			"path": "examples/supermini-esp32c3"
+			"path": "boards/supermini-esp32c3"
 		},
 		{
 			"name": "wave-esp32c6touch147",
-			"path": "examples/wave-esp32c6touch147"
+			"path": "boards/wave-esp32c6touch147"
 		},
 		{
 			"name": "wave-esp32c6147",
-			"path": "examples/wave-esp32c6147"
+			"path": "boards/wave-esp32c6147"
 		},
 		{
 			"name": "xiao-esp32c6",
-			"path": "examples/xiao-esp32c6"
+			"path": "boards/xiao-esp32c6"
 		}
 	],
 	"settings": {
 		"explorer.autoReveal": false,
 		"files.exclude": {
 			"libs": true,
-			"examples": true,
-			".vscode": true,
-			"target": true
+			"boards": true,
+			// ".vscode": true,
+			// "target": true
 		},
 		"rust-analyzer.linkedProjects": [
-			// "examples/wave-esp32c6touch147/Cargo.toml"
-			"examples/cyd/Cargo.toml"
-			// "examples/devkitv1/Cargo.toml"
-			// "examples/supermini-esp32c3/Cargo.toml"
-			// "examples/wave-esp32c6147/Cargo.toml"
-			// "examples/wave-esp32c6touch147/Cargo.toml"
-			// "examples/xiao-esp32c6/Cargo.toml"
+			// "boards/wave-esp32c6touch147/Cargo.toml",
+			"boards/cyd/Cargo.toml",
+			// "boards/devkitv1/Cargo.toml",
+			// "boards/supermini-esp32c3/Cargo.toml",
+			// "boards/wave-esp32c6147/Cargo.toml",
+			// "boards/wave-esp32c6touch147/Cargo.toml",
+			// "boards/xiao-esp32c6/Cargo.toml",
+			"libs/sparko-embedded-std/Cargo.toml", // This is needed
+			// "libs/sparko-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",
 		// // "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
@@ -96,14 +98,15 @@
 			"Timelike",
 			"tzset"
 		],
-		"rust-analyzer.check.overrideCommand": [
-			"cargo",
-			"check",
-			"--release",
-			"--message-format=json"
-		],
+		// "rust-analyzer.check.overrideCommand": [
+		// 	"cargo",
+		// 	"check",
+		// 	"--release",
+		// 	"--workspace",
+		// 	"--message-format=json"
+		// ],
 		"rust-analyzer.cargo.extraArgs": [
-			"--release"
+			"--release",
 		],
 		"rust-analyzer.checkOnSave": true
 	}

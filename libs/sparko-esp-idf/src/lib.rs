@@ -64,3 +64,7 @@ pub fn to_rgb565(color: &Color) -> Rgb565 {
         Color::White => Rgb565::WHITE,
     }
 }
+
+pub fn rgb565_from_rgb8(color: &rgb::RGB8) -> Rgb565 {
+    Rgb565::new(color.r >> 3, color.g >> 2, color.b >> 3)
+}

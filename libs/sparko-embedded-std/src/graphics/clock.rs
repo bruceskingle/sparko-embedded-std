@@ -1,16 +1,19 @@
 //! A simple analog clock example using embedded-graphics.
 //! Based on https://github.com/embedded-graphics/examples/blob/main/eg-0.8/examples/demo-analog-clock.rs
 
-use core::f32::consts::PI;
-use std::sync::{Arc, Mutex};
 use chrono::{Local, Timelike};
+use core::f32::consts::PI;
 use embedded_graphics::{
     prelude::*,
     primitives::{Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
 };
+use rgb::RGB8;
+use std::sync::{Arc, Mutex};
 
-use crate::{Layout, graphics::{DisplayManager, DrawTargetResultExt}};
-
+use crate::{
+    Layout,
+    graphics::{DisplayManager, DrawTargetResultExt},
+};
 
 use embedded_graphics::prelude::DrawTarget;
 
@@ -20,19 +23,23 @@ enum DrawMode {
 }
 
 pub struct ClockRenderer<DM>
-    where
-        DM: DisplayManager,
+where
+    DM: DisplayManager,
 {
     display_manager: Arc<Mutex<DM>>,
     inner: InnerRenderer<DM>,
 }
 
 impl<DM> ClockRenderer<DM>
-    where
-        DM: DisplayManager,
+where
+    DM: DisplayManager,
 {
-    pub fn new(display_manager: &Arc<Mutex<DM>>,layout: Layout) -> anyhow::Result<Self> 
-    {
+    pub fn new(
+        display_manager: &Arc<Mutex<DM>>,
+        layout: Layout,
+        clock_color_rgb: &RGB8,
+        bg_color_rgb: &RGB8,
+    ) -> anyhow::Result<Self> {
         let clock_color;
         let bg_color;
         let bounding_box;
@@ -40,8 +47,10 @@ impl<DM> ClockRenderer<DM>
         {
             let mut manager = display_manager.lock().unwrap();
 
-            clock_color = manager.map_color(&super::Color::Green);
-            bg_color = manager.map_color(&super::Color::Black);
+            // clock_color = manager.map_color(&super::Color::Green);
+            // bg_color = manager.map_color(&super::Color::Black);
+            clock_color = manager.map_rgb8(clock_color_rgb);
+            bg_color = manager.map_rgb8(bg_color_rgb);
             // The draw target bounding box can be used to determine the size of the display.
             bounding_box = layout(&manager.display().bounding_box());
         }
@@ -74,8 +83,8 @@ impl<DM> ClockRenderer<DM>
 }
 
 pub struct InnerRenderer<DM>
-    where
-        DM: DisplayManager,
+where
+    DM: DisplayManager,
 {
     clock_face: Circle,
     radius: f32,
@@ -94,15 +103,14 @@ pub struct InnerRenderer<DM>
 }
 
 impl<DM> InnerRenderer<DM>
-    where
-        DM: DisplayManager,
+where
+    DM: DisplayManager,
 {
     pub fn new(
         clock_color: <<DM>::Display as DrawTarget>::Color,
         bg_color: <<DM>::Display as DrawTarget>::Color,
         bounding_box: Rectangle,
-    ) -> anyhow::Result<Self> 
-    {
+    ) -> anyhow::Result<Self> {
         let diameter = bounding_box.size.width.min(bounding_box.size.height);
         let radius = (diameter / 2) as f32;
 
@@ -114,9 +122,6 @@ impl<DM> InnerRenderer<DM>
         let min_hand_len = radius * 0.70;
         let hour_hand_len = radius * 0.60;
         let centre_dia = (radius * 0.2) as u32;
-
-
-        
 
         // let clock_face = Self::create_face(target);
         Ok(Self {
@@ -137,7 +142,6 @@ impl<DM> InnerRenderer<DM>
         })
     }
 
-
     // fn context<'a, DM: DisplayManager>(&'a mut self, manager: &'a mut DM::Display) -> Context<'a, DM> {
     //     let clock_color = manager.map_color(&self.clock_color);
     //     let bg_color = manager.map_color(&self.bg_color);
@@ -150,28 +154,25 @@ impl<DM> InnerRenderer<DM>
     //     }
     // }
 
-//     pub fn draw<'a, DM: DisplayManager>(&'a mut self, target: &mut D)  -> anyhow::Result<()> {
-//         self.context(manager).draw()
-//     }
+    //     pub fn draw<'a, DM: DisplayManager>(&'a mut self, target: &mut D)  -> anyhow::Result<()> {
+    //         self.context(manager).draw()
+    //     }
 
-//     pub fn update<'a, DM: DisplayManager>(&'a mut self, manager: &mut DM)  -> anyhow::Result<()> {
-//         self.context(manager).update()
-//     }
-// }
+    //     pub fn update<'a, DM: DisplayManager>(&'a mut self, manager: &mut DM)  -> anyhow::Result<()> {
+    //         self.context(manager).update()
+    //     }
+    // }
 
+    // struct Context<'a, DM: DisplayManager> {
+    //     clock_renderer: &'a mut ClockRenderer,
+    //     target: &'a mut <DM as DisplayManager>::Display,
+    //     clock_color: <<DM>::Display as DrawTarget>::Color,
+    //     bg_color: <<DM>::Display as DrawTarget>::Color,
+    // }
 
+    // impl<'a, DM: DisplayManager> Context<'a, DM> {
 
-// struct Context<'a, DM: DisplayManager> {
-//     clock_renderer: &'a mut ClockRenderer,
-//     target: &'a mut <DM as DisplayManager>::Display,
-//     clock_color: <<DM>::Display as DrawTarget>::Color,
-//     bg_color: <<DM>::Display as DrawTarget>::Color,
-// }
-
-// impl<'a, DM: DisplayManager> Context<'a, DM> {
-
-    fn draw(&mut self, target: &mut <DM as DisplayManager>::Display)  -> anyhow::Result<()>
-    {
+    fn draw(&mut self, target: &mut <DM as DisplayManager>::Display) -> anyhow::Result<()> {
         self.clear(target)?;
 
         let now = Local::now();
@@ -179,7 +180,6 @@ impl<DM> InnerRenderer<DM>
         let hour = now.hour();
         let minute = now.minute();
         let second = now.second();
-
 
         self.draw_face(target)?;
         // self.draw_hour_hand(&DrawMode::Draw, Self::hour_minute_to_angle(hour, minute))?;
@@ -197,7 +197,8 @@ impl<DM> InnerRenderer<DM>
         // This has to happen after the hands are drawn so they're covered up.
         Circle::with_center(self.clock_face.center(), self.centre_dia)
             .into_styled(PrimitiveStyle::with_fill(self.clock_color))
-            .draw(target).anyhow()?;
+            .draw(target)
+            .anyhow()?;
 
         self.hour = hour;
         self.minute = minute;
@@ -206,19 +207,25 @@ impl<DM> InnerRenderer<DM>
         Ok(())
     }
 
-    pub fn update(&mut self, target: &mut <DM as DisplayManager>::Display)  -> anyhow::Result<()>
-    {
+    pub fn update(&mut self, target: &mut <DM as DisplayManager>::Display) -> anyhow::Result<()> {
         let now = Local::now();
         let hour = now.hour();
         let minute = now.minute();
         let second = now.second();
 
-
         if minute != self.minute {
             // Self::draw_hand(manager.display(), &self.clock_face, self.bg_color, 3, Self::hour_minute_to_angle(self.hour, self.minute), -60).anyhow()?;
             // Self::draw_hand(manager.display(), &self.clock_face, self.bg_color, 3, Self::sexagesimal_to_angle(self.minute), -30).anyhow()?;
-            self.draw_hour_hand(target, &DrawMode::Erase, Self::hour_minute_to_angle(self.hour, self.minute))?;
-            self.draw_min_hand(target, &DrawMode::Erase, Self::sexagesimal_to_angle(self.minute))?;
+            self.draw_hour_hand(
+                target,
+                &DrawMode::Erase,
+                Self::hour_minute_to_angle(self.hour, self.minute),
+            )?;
+            self.draw_min_hand(
+                target,
+                &DrawMode::Erase,
+                Self::sexagesimal_to_angle(self.minute),
+            )?;
         }
 
         if second != self.second {
@@ -226,11 +233,18 @@ impl<DM> InnerRenderer<DM>
             // Self::draw_hand(manager.display(), &self.clock_face, self.bg_color, 3, seconds_radians, -11).anyhow()?;
             // Self::draw_second_decoration(manager.display(), &self.clock_face, self.bg_color, self.bg_color, seconds_radians, -30).anyhow()?;
 
-            self.draw_sec_hand(target, &DrawMode::Erase, Self::sexagesimal_to_angle(self.second))?;
+            self.draw_sec_hand(
+                target,
+                &DrawMode::Erase,
+                Self::sexagesimal_to_angle(self.second),
+            )?;
         }
 
-
-        self.draw_hour_hand(target, &DrawMode::Draw, Self::hour_minute_to_angle(hour, minute))?;
+        self.draw_hour_hand(
+            target,
+            &DrawMode::Draw,
+            Self::hour_minute_to_angle(hour, minute),
+        )?;
         self.draw_min_hand(target, &DrawMode::Draw, Self::sexagesimal_to_angle(minute))?;
         self.draw_sec_hand(target, &DrawMode::Draw, Self::sexagesimal_to_angle(second))?;
 
@@ -245,7 +259,8 @@ impl<DM> InnerRenderer<DM>
         // This has to happen after the hands are drawn so they're covered up.
         Circle::with_center(self.clock_face.center(), self.centre_dia)
             .into_styled(PrimitiveStyle::with_fill(self.clock_color))
-            .draw(target).anyhow()?;
+            .draw(target)
+            .anyhow()?;
 
         self.hour = hour;
         self.minute = minute;
@@ -260,10 +275,12 @@ impl<DM> InnerRenderer<DM>
     //         .draw(manager.display()).anyhow()
     // }
 
-    fn clear(&mut self, target: &mut <DM as DisplayManager>::Display)-> anyhow::Result<()> {
-        target.bounding_box()
+    fn clear(&mut self, target: &mut <DM as DisplayManager>::Display) -> anyhow::Result<()> {
+        target
+            .bounding_box()
             .into_styled(PrimitiveStyle::with_fill(self.bg_color))
-            .draw(target).anyhow()
+            .draw(target)
+            .anyhow()
 
         // let manager: &DM = self.manager;
         // self.fill_color(self.manager, self.bg_color)
@@ -310,7 +327,7 @@ impl<DM> InnerRenderer<DM>
         // Convert from 24 to 12 hour time.
         let hour = hour % 12;
 
-        ((hour as f32 + (minute as f32 / 60.0)) / 12.0)  * 2.0 * PI
+        ((hour as f32 + (minute as f32 / 60.0)) / 12.0) * 2.0 * PI
     }
 
     /// Converts a sexagesimal (base 60) value into an angle in radians.
@@ -329,15 +346,10 @@ impl<DM> InnerRenderer<DM>
     // }
 
     /// Draws a circle and 12 graduations as a simple clock face.
-    fn draw_face(&mut self,
-        target: &mut <DM as DisplayManager>::Display,) -> anyhow::Result<()>
-
-    {
+    fn draw_face(&mut self, target: &mut <DM as DisplayManager>::Display) -> anyhow::Result<()> {
         // Draw the outer face.
         let style = PrimitiveStyle::with_stroke(self.clock_color, 2);
-        (self.clock_face)
-            .into_styled(style)
-            .draw(target).anyhow()?;
+        (self.clock_face).into_styled(style).draw(target).anyhow()?;
 
         // Draw 12 graduations.
         for angle in (0..12).map(Self::hour_to_angle) {
@@ -349,7 +361,8 @@ impl<DM> InnerRenderer<DM>
 
             Line::new(start, end)
                 .into_styled(style)
-                .draw(target).anyhow()?;
+                .draw(target)
+                .anyhow()?;
         }
 
         Ok(())
@@ -391,13 +404,13 @@ impl<DM> InnerRenderer<DM>
         stroke_width: u32,
         angle: f32,
         length: f32,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         let end = self.polar(angle, length);
 
         Line::new(self.clock_face.center(), end)
             .into_styled(PrimitiveStyle::with_stroke(stroke_color, stroke_width))
-            .draw(target).anyhow()
+            .draw(target)
+            .anyhow()
     }
 
     fn fg_color(&self, draw_mode: &DrawMode) -> <<DM>::Display as DrawTarget>::Color {
@@ -412,9 +425,14 @@ impl<DM> InnerRenderer<DM>
         target: &mut <DM as DisplayManager>::Display,
         draw_mode: &DrawMode,
         angle: f32,
-    ) -> anyhow::Result<()>
-    {
-        self.draw_hand(target, self.fg_color(draw_mode), 3, angle, self.hour_hand_len)
+    ) -> anyhow::Result<()> {
+        self.draw_hand(
+            target,
+            self.fg_color(draw_mode),
+            3,
+            angle,
+            self.hour_hand_len,
+        )
     }
 
     fn draw_min_hand(
@@ -422,9 +440,14 @@ impl<DM> InnerRenderer<DM>
         target: &mut <DM as DisplayManager>::Display,
         draw_mode: &DrawMode,
         angle: f32,
-    ) -> anyhow::Result<()>
-    {
-        self.draw_hand(target, self.fg_color(draw_mode), 2, angle, self.min_hand_len)
+    ) -> anyhow::Result<()> {
+        self.draw_hand(
+            target,
+            self.fg_color(draw_mode),
+            2,
+            angle,
+            self.min_hand_len,
+        )
     }
 
     fn draw_sec_hand(
@@ -432,9 +455,14 @@ impl<DM> InnerRenderer<DM>
         target: &mut <DM as DisplayManager>::Display,
         draw_mode: &DrawMode,
         angle: f32,
-    ) -> anyhow::Result<()>
-    {
-        self.draw_hand(target, self.fg_color(draw_mode), 1, angle, self.sec_hand_len)?;
+    ) -> anyhow::Result<()> {
+        self.draw_hand(
+            target,
+            self.fg_color(draw_mode),
+            1,
+            angle,
+            self.sec_hand_len,
+        )?;
         self.draw_second_decoration(target, draw_mode, angle, self.sec_dec_len)
     }
 
@@ -445,8 +473,7 @@ impl<DM> InnerRenderer<DM>
         draw_mode: &DrawMode,
         angle: f32,
         length: f32,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         let decoration_position = self.polar(angle, length);
 
         let decoration_style = PrimitiveStyleBuilder::new()
@@ -458,7 +485,7 @@ impl<DM> InnerRenderer<DM>
         // Draw a fancy circle near the end of the second hand.
         Circle::with_center(decoration_position, self.sec_dec_dia)
             .into_styled(decoration_style)
-            .draw(target).anyhow()
-
+            .draw(target)
+            .anyhow()
     }
 }

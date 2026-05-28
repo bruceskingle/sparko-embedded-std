@@ -179,9 +179,9 @@ impl ConfigStore for EspConfigStore {
                 let v = if let Some(value) =
                     self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_u8(name))
                 {
-                    value != 0
+                    Some(value != 0)
                 } else {
-                    false
+                    None
                 };
                 TypedValue::Bool(v)
             }
@@ -193,12 +193,12 @@ impl ConfigStore for EspConfigStore {
                         .get_str(name, &mut [0u8; TIMEZONE_LEN as usize]),
                 ) {
                     if let Some(tz) = TimeZone::from_str(str) {
-                        TypedValue::TimeZone(tz)
+                        TypedValue::TimeZone(Some(tz))
                     } else {
-                        TypedValue::TimeZone(TimeZone::Utc)
+                        TypedValue::TimeZone(None)
                     }
                 } else {
-                    TypedValue::TimeZone(TimeZone::Utc)
+                    TypedValue::TimeZone(None)
                 }
             }
             TypedValue::Cron(_) => {
@@ -301,11 +301,11 @@ impl ConfigStore for EspConfigStore {
                             info!("Saving int64 value for {} to NVS: {}", name, val);
                             self.nvs_namespace.set_i64(name, *val)?
                         }
-                        TypedValue::Bool(val) => {
+                        TypedValue::Bool(Some(val)) => {
                             info!("Saving bool value for {} to NVS: {}", name, val);
                             self.nvs_namespace.set_u8(name, if *val { 1 } else { 0 })?
                         }
-                        TypedValue::TimeZone(tz) => {
+                        TypedValue::TimeZone(Some(tz)) => {
                             info!("Saving TimeZone value for {} to NVS: {}", name, tz.to_str());
                             self.nvs_namespace.set_str(name, tz.to_str())?
                         }

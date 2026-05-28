@@ -74,7 +74,7 @@ impl Feature for Core {
             )?
             .with(
                 TIMEZONE.to_string(),
-                ConfigSpecValue::new(TypedValue::TimeZone(TimeZone::Utc), true),
+                ConfigSpecValue::new(TypedValue::TimeZone(Some(TimeZone::Utc)), true),
             )?
             .build();
 
@@ -92,7 +92,7 @@ impl Feature for Core {
     ) -> anyhow::Result<()> {
         let opt_config = config.map.get(TIMEZONE);
         if let Some(config) = opt_config {
-            if let TypedValue::TimeZone(tz) = config {
+            if let TypedValue::TimeZone(Some(tz)) = config {
                 Self::set_as_system_timezone(&tz);
             } else {
                 anyhow::bail!("Timezone config value has wrong type");

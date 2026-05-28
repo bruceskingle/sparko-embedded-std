@@ -97,7 +97,7 @@ impl Feature for DynDns2 {
             )?
             .with(
                 UPDATE_REQUIRES_ADDRESS.to_string(),
-                ConfigSpecValue::new(TypedValue::Bool(false), false),
+                ConfigSpecValue::new(TypedValue::Bool(None), false),
             )?
             .with(
                 SCHEDULE.to_string(),

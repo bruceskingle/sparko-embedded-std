@@ -147,8 +147,12 @@ impl FeatureConfig {
                     &input_type_buf
                 }
                 TypedValue::Int32(_) | TypedValue::Int64(_) => "number",
-                TypedValue::Bool(value) => {
-                    let checked = if *value { " checked" } else { "" };
+                TypedValue::Bool(opt_value) => {
+                    let checked = if let Some(value) = opt_value {
+                        if *value { " checked" } else { "" }
+                    } else {
+                        ""
+                    };
 
                     resp.write(format!(r#"
                                 <label for="{name}">{name}</label>
@@ -156,7 +160,7 @@ impl FeatureConfig {
                     "#).as_bytes())?;
                     continue;
                 }
-                TypedValue::TimeZone(current) => {
+                TypedValue::TimeZone(opt_tz) => {
                     info!("Config value {} is a TimeZone,", name);
 
                     resp.write(
@@ -168,8 +172,17 @@ impl FeatureConfig {
                         )
                         .as_bytes(),
                     )?;
+                    let selected_attr = if opt_tz.is_none() { " selected" } else { "" };
+                    resp.write(
+                        format!(r#"<option value=""{selected_attr}>None</option>"#).as_bytes(),
+                    )?;
+
                     for tz in TimeZone::iter() {
-                        let selected_attr = if *tz == *current { " selected" } else { "" };
+                        let selected_attr = if let Some(current) = opt_tz {
+                            if *tz == *current { " selected" } else { "" }
+                        } else {
+                            ""
+                        };
                         resp.write(
                             format!(
                                 r#"<option value="{}"{}>{}</option>"#,
@@ -183,9 +196,9 @@ impl FeatureConfig {
                     resp.write(format!(r#"</select>"#).as_bytes())?;
                     continue;
                 }
-                TypedValue::Color(current) => {
+                TypedValue::Color(opt_color) => {
                     info!("Config value {} is a Color,", name);
-                    let value = crate::config::format_opt_rgb8(current);
+                    let value = crate::config::format_opt_rgb8(opt_color);
 
                     resp.write(
                         format!(

@@ -50,7 +50,7 @@ pub trait Feature {
     ) -> anyhow::Result<()>;
 }
 
-pub trait FeatureConfig {}
+// pub trait FeatureConfig {}
 
 pub fn to_rgb565(color: &Color) -> Rgb565 {
     match color {

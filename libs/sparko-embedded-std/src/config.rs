@@ -37,8 +37,8 @@ pub enum TypedValue {
     String(usize, Option<String>),
     Int32(Option<i32>),
     Int64(Option<i64>),
-    Bool(bool),
-    TimeZone(TimeZone),
+    Bool(Option<bool>),
+    TimeZone(Option<TimeZone>),
     Cron(Option<Cron>),
     Color(Option<RGB8>),
 }
@@ -88,22 +88,10 @@ impl TypedValue {
             TypedValue::String(_len, Some(val)) => val.clone(),
             TypedValue::Int32(Some(val)) => val.to_string(),
             TypedValue::Int64(Some(val)) => val.to_string(),
-            TypedValue::Bool(val) => val.to_string(),
-            TypedValue::TimeZone(tz) => tz.to_str().to_string(),
-            TypedValue::Cron(opt_cron) => {
-                if let Some(cron) = opt_cron {
-                    cron.pattern.to_string()
-                } else {
-                    "".to_string()
-                }
-            }
-            TypedValue::Color(val) => {
-                if let Some(color) = val {
-                    format_rgb8(&*color)
-                } else {
-                    "".to_string()
-                }
-            }
+            TypedValue::Bool(Some(val)) => val.to_string(),
+            TypedValue::TimeZone(Some(tz)) => tz.to_str().to_string(),
+            TypedValue::Cron(Some(cron)) => cron.pattern.to_string(),
+            TypedValue::Color(Some(color)) => format_rgb8(color),
             _ => "".to_string(),
         }
     }
@@ -113,8 +101,8 @@ impl TypedValue {
             TypedValue::String(len, _) => TypedValue::String(*len, None),
             TypedValue::Int32(_) => TypedValue::Int32(None),
             TypedValue::Int64(_) => TypedValue::Int64(None),
-            TypedValue::Bool(_) => TypedValue::Bool(false),
-            TypedValue::TimeZone(_) => TypedValue::TimeZone(TimeZone::Utc),
+            TypedValue::Bool(_) => TypedValue::Bool(None),
+            TypedValue::TimeZone(_) => TypedValue::TimeZone(None),
             TypedValue::Cron(_) => TypedValue::Cron(None),
             TypedValue::Color(_) => TypedValue::Color(None),
         }
@@ -131,14 +119,8 @@ impl TypedValue {
             }
             TypedValue::Int32(_) => TypedValue::Int32(Some(str_val.parse::<i32>()?)),
             TypedValue::Int64(_) => TypedValue::Int64(Some(str_val.parse::<i64>()?)),
-            TypedValue::Bool(_) => TypedValue::Bool(str_val.parse::<bool>()?),
-            TypedValue::TimeZone(_) => {
-                if let Some(tz) = TimeZone::from_str(str_val) {
-                    TypedValue::TimeZone(tz)
-                } else {
-                    anyhow::bail!("Invalid timezone value: {}", str_val);
-                }
-            }
+            TypedValue::Bool(_) => TypedValue::Bool(Some(str_val.parse::<bool>()?)),
+            TypedValue::TimeZone(_) => TypedValue::TimeZone(TimeZone::from_str(str_val)),
             TypedValue::Cron(_) => TypedValue::Cron(Some(Cron::from_str(str_val)?)),
             TypedValue::Color(_) => TypedValue::Color(Some(parse_rgb8(str_val)?)),
         })

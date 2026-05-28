@@ -46,8 +46,8 @@
 			// "target": true
 		},
 		"rust-analyzer.linkedProjects": [
-			// "boards/wave-esp32c6touch147/Cargo.toml",
-			"boards/cyd/Cargo.toml",
+			"boards/wave-esp32c6touch147/Cargo.toml",
+			// "boards/cyd/Cargo.toml",
 			// "boards/devkitv1/Cargo.toml",
 			// "boards/supermini-esp32c3/Cargo.toml",
 			// "boards/wave-esp32c6147/Cargo.toml",

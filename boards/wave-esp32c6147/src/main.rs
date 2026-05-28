@@ -4,8 +4,8 @@ use embedded_graphics::{
 };
 use sparko_embedded_std::DisplayOrientation;
 use sparko_esp_idf::{
-    features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
     Esp32Platform,
+    features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
 };
 
 fn main() {
@@ -29,7 +29,7 @@ fn run() -> anyhow::Result<()> {
     //     .with_feature(DynDns2::new())
     //     .build()?;
 
-    let (builder, remainder) = Esp32Platform::builder2()?;
+    let (builder, remainder) = Esp32Platform::builder()?;
 
     let smart_leds = sparko_esp_idf::smart_led::new(
         remainder.rmt.channel0,

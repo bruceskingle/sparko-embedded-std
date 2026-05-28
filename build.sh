@@ -5,7 +5,7 @@ set -o pipefail # exit if any command in a pipe fails
 
 echo Build all...
 
-for board in examples/*
+for board in boards/*
 do
 	echo Board $board
 	(cd $board ; cargo build --release)

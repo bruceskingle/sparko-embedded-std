@@ -22,13 +22,13 @@ pub struct InnerFeatureConfig {
 
 impl InnerFeatureConfig {}
 
-pub struct FeatureConfig {
+pub struct FeatureConfigHolder {
     pub name: String,
     pub inner: Mutex<InnerFeatureConfig>,
     pub config_store: Box<dyn ConfigStore>,
 }
 
-impl FeatureConfig {
+impl FeatureConfigHolder {
     pub fn to_config(&self) -> Config {
         let mut map = IndexMap::new();
         let inner = &self.inner.lock().unwrap();

@@ -1,0 +1,23 @@
+[package]
+name = "sparko-embedded-std-example-xiao-esp32c6"
+version = "0.1.0"
+edition = "2024"
+resolver = "2"
+
+[[bin]]
+name = "sparko-embedded-std-example-xiao-esp32c6"
+harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
+
+[dependencies]
+# Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
+embassy-time = { version = "0.5", features = ["generic-queue-8"]}
+esp-idf-sys = { version = "0.37.2"}
+anyhow = "1.0.102"
+
+sparko-embedded-std = { path = "../../libs/sparko-embedded-std" }
+sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-xiao-esp32c6"]}
+
+
+[build-dependencies]
+embuild = "0.33"
+

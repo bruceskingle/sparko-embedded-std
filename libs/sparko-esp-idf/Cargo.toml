@@ -1,0 +1,88 @@
+[package]
+name = "sparko-esp-idf"
+version = "0.1.0"
+edition = "2024"
+resolver = "2"
+
+[dependencies]
+log = "0.4"
+esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-time-driver", "embassy-sync"], optional = true }
+# Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
+#embassy-time = { version = "0.5", features = ["generic-queue-8"], optional = true }
+embedded-svc = { version = "0.29.0", optional = true }
+esp-idf-hal = { version = "0.46.2", features = ["rmt-legacy"], optional = true }
+esp-idf-sys = { version = "0.37.2", optional = true }
+anyhow = "1.0.102"
+futures = { version = "0.3.32", optional = true }
+heapless = "0.9.1"
+
+url = "2.5.8"
+indexmap = "2.13.0"
+chrono = "0.4.44"
+simple-dns = "0.11.2"
+croner = "3.0.1"
+#smart-leds = "0.4.0"
+#smart-leds-trait = { version = "0.3"}
+
+
+mipidsi = { version = "0.10", optional = true }
+embedded-graphics = "0.8"
+
+
+embedded-hal = "1.0"
+#esp-hal-smartled = { version = "0.17.0", features = ["esp32"]}
+
+rgb = "0.8.53"
+ahrs = {version="0.8.0", features=["field_access"], optional = true}
+nalgebra = {version="0.34.2", optional = true}
+
+
+sparko-embedded-std = { path = "../sparko-embedded-std"}
+#feature-config-derive = { path = "../feature-config-derive"}
+
+[features]
+default = ["espidf"]
+#default = ["espidf", "board-xiao-esp32c6"]
+#espidf = ["esp-idf-svc", "embassy-time", "embedded-svc", "esp-idf-hal", "esp-idf-sys", "futures", "embuild"]
+espidf = [
+  "esp-idf-svc",
+ # "embassy-time",
+  "embedded-svc",
+  "esp-idf-hal",
+  "esp-idf-sys",
+  "futures"
+]
+
+# Functional features dependant on board hardware, enabled by board- features, should not normally be selected by clients directly
+led = []
+simple-led = ["led"]
+mono-led = ["led"]
+rgb-led = ["led"]
+display = []
+smart-led-spi = []  # Device does not support DMA acces via RMT (or has no RMT if ever there is such a board) and therefore requires the SPI implementation
+display-jd9853 =[]
+mipi-dsi-display = ["display", "mipidsi"]
+mipi-dsi-display-reset = []
+i2c = []
+imu = []
+touch-driver = []
+qmi8658 = ["imu", "i2c"]
+AXS5106L = ["touch-driver"]
+
+# board features, clients should select exactly one of these to target the board in use
+board-cyd = ["rgb-led", "mipi-dsi-display", "smart-led-spi"]
+board-wave-esp32c6touch147 = ["mipi-dsi-display", "mipi-dsi-display-reset", "qmi8658", "AXS5106L"] # seems to work with the ST7789 driver. , "display-jd9853"
+board-wave-esp32c6147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
+board-xiao-esp32c6 = ["mono-led"]
+board-devkitv1 = ["mono-led", "smart-led-spi"]
+board-supermini-esp32c3 = ["mono-led", "smart-led-spi"]
+
+# Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
+# checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
+ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
+tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
+touch = []                              # Touch input. Requires touch-driver hardware
+
+[build-dependencies]
+#embuild = { version = "0.33", optional = true }
+embuild = "0.33"

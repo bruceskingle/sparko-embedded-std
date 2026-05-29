@@ -73,6 +73,25 @@ label { display: block; margin: 12px 0 6px; font-weight: 600; }
 input, select { width: 100%; padding: 10px 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
 button { margin-top: 18px; width: 100%; padding: 12px; font-size: 1rem; border-radius: 10px; border: none; background: #007aff; color: #fff; }
 button:active { background: #005bb5; }
+
+.form_row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form_row input[type="text"] {
+  flex: 1;
+  width: auto;
+}
+
+.form_row input[type="color"] {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
                         "#.as_bytes())?;
             Ok(())
         }))?;

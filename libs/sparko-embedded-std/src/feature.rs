@@ -191,7 +191,15 @@ impl FeatureConfigHolder {
                             r#"
                                 <!-- Color field {name}-->
                                 <label for="{name}">{name}</label>
+                                <div class="form_row">
                                 <input id="{name}" name="{name}" type="text" value="{value}">
+                                <input id="{name}_picker" type="color" value="{value}">
+                                </div>
+                                <script>
+                                document.getElementById('{name}_picker').addEventListener('change', function() {{
+                                    document.getElementById('{name}').value = this.value.toUpperCase();
+                                }});
+                                </script>
                     "#
                         )
                         .as_bytes(),

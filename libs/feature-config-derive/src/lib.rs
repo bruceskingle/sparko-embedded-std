@@ -476,7 +476,7 @@ fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
     for field in fields {
         let field_ident = field.ident.as_ref().unwrap();
-        let key = field_ident.to_string().to_uppercase();
+        let key = field_ident.to_string();
         let kind = field_kind(field)?;
 
         from_extractions.push(emit_from_extraction(field_ident, &kind, &key));

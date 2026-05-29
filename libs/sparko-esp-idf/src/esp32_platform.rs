@@ -13,7 +13,6 @@ use esp_idf_svc::{
 use esp_idf_sys::*;
 use log::{error, info};
 use sparko_embedded_std::config::Config;
-use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
 use sparko_embedded_std::http_server::HttpServerManager;
 use sparko_embedded_std::platform::{Platform, PlatformInitializer};
@@ -564,7 +563,6 @@ impl Esp32PlatformBuilder {
                 &config,
             )?));
 
-            let rotation: u16 = 0;
             let touch_driver_factory =
                 TouchDriver::factory(peripherals.pins.gpio21, peripherals.pins.gpio20, &i2c)?;
 
@@ -722,7 +720,7 @@ impl Esp32PlatformBuilder {
         #[cfg(feature = "display")]
         let mut display_manager;
         #[cfg(feature = "imu")]
-        let mut imu;
+        let imu;
         #[cfg(feature = "touch-driver")]
         let mut touch_driver;
 

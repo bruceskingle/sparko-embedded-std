@@ -1,8 +1,4 @@
-use embedded_graphics::{
-    pixelcolor::Rgb565,
-    prelude::*,
-    primitives::{PrimitiveStyle, Rectangle},
-};
+use embedded_graphics::{prelude::*, primitives::PrimitiveStyle};
 use esp_idf_hal::{
     gpio::{Output, PinDriver},
     spi::SpiDeviceDriver,

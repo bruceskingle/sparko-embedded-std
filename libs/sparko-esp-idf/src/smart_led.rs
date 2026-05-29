@@ -1,20 +1,16 @@
-
+use crate::AnyhowResultExt;
 use core::time::Duration;
-use std::borrow::Borrow;
-
 use esp_idf_hal::gpio::AnyIOPin;
 use esp_idf_hal::rmt::{PinState, Pulse, PulseTicks, Signal, Symbol};
+use esp_idf_hal::spi::{Dma, SpiAnyPins, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 use esp_idf_hal::units::Hertz;
 use esp_idf_hal::{
     gpio::OutputPin,
-    rmt::{config::TransmitConfig, RmtChannel, TxRmtDriver},
+    rmt::{RmtChannel, TxRmtDriver, config::TransmitConfig},
 };
-use esp_idf_hal::spi::{Dma, SpiAnyPins, SpiConfig, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 use esp_idf_sys::rmt_item32_t;
-use log::info;
 use rgb::RGB;
-
-use crate::AnyhowResultExt;
+use std::borrow::Borrow;
 
 /// T0H duration time (0 code, high voltage time)
 const WS2812_T0H_NS: Duration = Duration::from_nanos(300);
@@ -34,8 +30,6 @@ pub trait SmartLeds {
     fn send(&mut self) -> anyhow::Result<()>;
     fn get_num_leds(&self) -> usize;
 }
-
-
 
 #[cfg(feature = "smart-led-spi")]
 /// Constructor for the default SmartLeds implementation for the current board.
@@ -79,11 +73,10 @@ pub fn new<'d, SPI: SpiAnyPins + 'd>(
 pub fn new<'d, C: RmtChannel + 'd>(
     channel: C,
     pin: impl OutputPin + 'd,
-    num_leds: usize) -> anyhow::Result<SmartLedsRmt<'d>> {
-        SmartLedsRmt::new(channel, pin, num_leds)
-    }
-
-
+    num_leds: usize,
+) -> anyhow::Result<SmartLedsRmt<'d>> {
+    SmartLedsRmt::new(channel, pin, num_leds)
+}
 
 pub struct SmartLedsRmt<'a> {
     rmt: TxRmtDriver<'a>,
@@ -98,32 +91,46 @@ impl<'a> SmartLedsRmt<'a> {
     pub fn new<C: RmtChannel + 'a>(
         channel: C,
         pin: impl OutputPin + 'a,
-        num_leds: usize) -> anyhow::Result<Self> {
+        num_leds: usize,
+    ) -> anyhow::Result<Self> {
         let config = TransmitConfig::new()
             .clock_divider(8)
             .carrier(None)
-            .idle(Some(PinState::Low))
-            ;
+            .idle(Some(PinState::Low));
         let rmt: TxRmtDriver<'a> = TxRmtDriver::new(channel, pin, &config).unwrap();
 
         let ticks_hz = rmt.counter_clock().anyhow()?;
 
-        
         let zero_symbol = Symbol::new(
-            Pulse::new(PinState::High, PulseTicks::new_with_duration(ticks_hz, &WS2812_T0H_NS).anyhow()?),
-            Pulse::new(PinState::Low, PulseTicks::new_with_duration(ticks_hz, &WS2812_T0L_NS).anyhow()?),
+            Pulse::new(
+                PinState::High,
+                PulseTicks::new_with_duration(ticks_hz, &WS2812_T0H_NS).anyhow()?,
+            ),
+            Pulse::new(
+                PinState::Low,
+                PulseTicks::new_with_duration(ticks_hz, &WS2812_T0L_NS).anyhow()?,
+            ),
         );
 
         let zero_signal = zero_symbol.as_slice()[0]; // Get the rmt_item32_t representation of the zero symbol
 
         let one_symbol = Symbol::new(
-            Pulse::new(PinState::High, PulseTicks::new_with_duration(ticks_hz, &WS2812_T1H_NS).anyhow()?),
-            Pulse::new(PinState::Low, PulseTicks::new_with_duration(ticks_hz, &WS2812_T1L_NS).anyhow()?),
+            Pulse::new(
+                PinState::High,
+                PulseTicks::new_with_duration(ticks_hz, &WS2812_T1H_NS).anyhow()?,
+            ),
+            Pulse::new(
+                PinState::Low,
+                PulseTicks::new_with_duration(ticks_hz, &WS2812_T1L_NS).anyhow()?,
+            ),
         );
         let one_signal = one_symbol.as_slice()[0]; // Get the rmt_item32_t representation of the one symbol
 
         let reset_symbol = Symbol::new(
-            Pulse::new(PinState::Low, PulseTicks::new_with_duration(ticks_hz, &WS2812_RESET_NS).anyhow()?),
+            Pulse::new(
+                PinState::Low,
+                PulseTicks::new_with_duration(ticks_hz, &WS2812_RESET_NS).anyhow()?,
+            ),
             Pulse::new(PinState::Low, PulseTicks::zero()),
         );
         let reset_signal = reset_symbol.as_slice()[0]; // Get the rmt_item32_t representation of the reset symbol
@@ -148,7 +155,11 @@ impl<'a> SmartLedsRmt<'a> {
         for (i, &byte) in [pixel.g, pixel.r, pixel.b].iter().enumerate() {
             for bit in 0..8 {
                 let bit_is_set = (byte >> (7 - bit)) & 1 == 1;
-                signal[i * 8 + bit] = if bit_is_set { self.one_signal } else { self.zero_signal };
+                signal[i * 8 + bit] = if bit_is_set {
+                    self.one_signal
+                } else {
+                    self.zero_signal
+                };
             }
         }
         signal
@@ -178,7 +189,7 @@ impl SmartLeds for SmartLedsRmt<'_> {
         self.rmt.start_blocking(buf.as_slice()).anyhow()?;
         Ok(())
     }
-    
+
     fn get_num_leds(&self) -> usize {
         self.num_leds
     }
@@ -187,13 +198,12 @@ impl SmartLeds for SmartLedsRmt<'_> {
 pub struct SmartLedsSpi<'d, T>
 where
     T: Borrow<SpiDriver<'d>> + 'd,
-    {
+{
     spi: SpiDeviceDriver<'d, T>,
     buf: Vec<u8>,
     num_leds: usize,
     p: std::marker::PhantomData<&'d ()>,
 }
-
 
 // pub fn new_func<'d, SPI: SpiAnyPins + 'd>(
 //     spi: SPI,
@@ -202,8 +212,6 @@ where
 //     // spi: SpiDeviceDriver<'d, T>,
 //     num_leds: usize,
 // ) -> anyhow::Result<SmartLedsSpi<'d, _>> {
-
-
 
 //     let driver = SpiDriver::new(
 //         spi,sclk,
@@ -237,14 +245,12 @@ impl<'d> SmartLedsSpi<'d, SpiDriver<'d>> {
         sdo: impl OutputPin + 'd,
         num_leds: usize,
     ) -> anyhow::Result<Self> {
-
         let driver = SpiDriver::new(
             spi,
             sclk,
             sdo,
             None::<AnyIOPin>,
-            &SpiDriverConfig::new()
-                .dma(Dma::Auto(Self::required_spi_transfer_size(num_leds)))
+            &SpiDriverConfig::new().dma(Dma::Auto(Self::required_spi_transfer_size(num_leds))),
         )?;
 
         let spi = SpiDeviceDriver::new(
@@ -262,8 +268,7 @@ impl<'d> SmartLedsSpi<'d, SpiDriver<'d>> {
 impl<'d, T> SmartLedsSpi<'d, T>
 where
     T: Borrow<SpiDriver<'d>> + 'd,
-    {
-    
+{
     /// This is the required size of a single dma transfer, effectively the required dma buffer size
     pub fn required_spi_transfer_size(num_leds: usize) -> usize {
         ((num_leds * 9 + 50) / 4 + 1) * 4
@@ -276,8 +281,6 @@ where
     //     // spi: SpiDeviceDriver<'d, T>,
     //     num_leds: usize,
     // ) -> anyhow::Result<Self> {
-
-
 
     //     let driver = SpiDriver::new(
     //         spi,sclk,
@@ -304,15 +307,10 @@ where
     //     Self::from_spi(spi, num_leds)
     // }
 
-
-    pub fn from_spi(
-        spi: SpiDeviceDriver<'d, T>,
-        num_leds: usize,
-    ) -> anyhow::Result<Self> {
-
+    pub fn from_spi(spi: SpiDeviceDriver<'d, T>, num_leds: usize) -> anyhow::Result<Self> {
         let capacity = num_leds * 9 + 50;
         // 9 bytes per LED (24 bits * 3 SPI bits / 8)
-        
+
         let mut buf = Vec::with_capacity(capacity); //vec![0u8; capacity]; // + reset padding
         for _ in 0..(capacity) {
             buf.push(0u8);
@@ -339,11 +337,7 @@ where
         for i in 0..8 {
             let bit = (byte >> (7 - i)) & 1;
 
-            let pattern = if bit == 1 {
-                0b110
-            } else {
-                0b100
-            };
+            let pattern = if bit == 1 { 0b110 } else { 0b100 };
 
             for j in 0..3 {
                 if (pattern >> (2 - j)) & 1 == 1 {
@@ -355,13 +349,12 @@ where
             }
         }
     }
-
 }
 
 impl<'d, T> SmartLeds for SmartLedsSpi<'d, T>
 where
     T: Borrow<SpiDriver<'d>> + 'd,
- {
+{
     fn set_pixel_rgb(&mut self, index: usize, color: RGB<u8>) -> anyhow::Result<()> {
         let start = index * 9;
         let slice = &mut self.buf[start..start + 9];
@@ -379,12 +372,11 @@ where
     }
 
     fn send(&mut self) -> anyhow::Result<()> {
-
         let buf = self.buf.clone();
         self.spi.write(buf.as_slice())?;
         Ok(())
     }
-    
+
     fn get_num_leds(&self) -> usize {
         self.num_leds
     }

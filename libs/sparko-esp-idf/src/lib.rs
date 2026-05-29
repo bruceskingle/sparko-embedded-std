@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use sparko_embedded_std::{
-    config::{Config, ConfigSpec, FeatureConfig},
+    config::{ConfigSpec, FeatureConfig},
     feature::FeatureDescriptor,
     graphics::Color,
 };

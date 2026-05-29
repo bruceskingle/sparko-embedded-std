@@ -34,7 +34,7 @@ impl Feature for ImuFeature {
     type Config = ImuConfig;
     fn init(
         &self,
-        init: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        _init: &mut sparko_esp_idf::Esp32PlatformInitializer,
     ) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor> {
         info!("ImuFeature::init");
 
@@ -97,7 +97,8 @@ impl<DM: DisplayManager + Send + 'static> Listener<TouchPoint> for TouchListener
             embedded_graphics::geometry::Point::new(event.x as i32, event.y as i32),
             color,
         )
-        .draw(target);
+        .draw(target)
+        .ok();
     }
 }
 
@@ -118,7 +119,7 @@ impl Feature for TouchDrawFeature {
     type Config = TouchDrawConfig;
     fn init(
         &self,
-        init: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        _init: &mut sparko_esp_idf::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("TouchListener::init");
 
@@ -131,8 +132,8 @@ impl Feature for TouchDrawFeature {
     fn start(
         &mut self,
         sparko: &mut sparko_esp_idf::Esp32Platform,
-        initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
-        config: TouchDrawConfig,
+        _initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        _config: TouchDrawConfig,
     ) -> anyhow::Result<()> {
         let listener: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchListener {
             display_manager: sparko.display_manager.clone(),
@@ -149,7 +150,7 @@ fn main() -> anyhow::Result<()> {
 
     let smart_leds = sparko_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio6, 64)?;
 
-    let mut sparko_esp32 = builder
+    let sparko_esp32 = builder
         .with_feature(Box::new(TouchDrawFeature::new()))?
         .with_feature(Box::new(ImuFeature::new()))?
         .with_feature(Box::new(DynDns2::new()?))?

@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, PathArguments, Type,
+    parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, PathArguments, Type,
 };
 
 /// Derive macro for `FeatureConfig`.

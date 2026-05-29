@@ -15,32 +15,18 @@ pub struct FeatureDescriptor {
     pub config: ConfigSpec,
 }
 
-pub struct InnerFeatureConfig {
-    pub enabled: EnabledState,
-    pub config: ConfigSpec,
-}
-
-impl InnerFeatureConfig {}
-
 pub struct FeatureConfigHolder {
     pub name: String,
-    pub inner: Mutex<InnerFeatureConfig>,
+    pub inner: Mutex<Config>,
     pub config_store: Box<dyn ConfigStore>,
 }
 
 impl FeatureConfigHolder {
     pub fn to_config(&self) -> Config {
-        let mut map = IndexMap::new();
         let inner = &self.inner.lock().unwrap();
 
-        for (name, spec) in &inner.config.map {
-            map.insert(name.clone(), spec.value.clone());
-        }
-
-        Config {
-            enabled: inner.enabled,
-            map,
-        }
+        let x = &**inner;
+        x.clone()
     }
 
     pub fn from_feature(
@@ -57,20 +43,20 @@ impl FeatureConfigHolder {
             config_store.load_enabled_state()?
         };
 
-        let mut config = feature_descriptor.config;
+        let mut spec = feature_descriptor.config;
         info!(
             "Loading feature {} config from NVS",
             &feature_descriptor.name
         );
-        for (name, config_value) in config.map.iter_mut() {
+        for (name, config_value) in spec.map.iter_mut() {
             //config_value.value =
             config_store.load(name, config_value);
         }
-        info!("Finished loading config: {:?}", config);
+        info!("Finished loading config: {:?}", spec);
 
         let feature_config = Self {
             name: feature_descriptor.name,
-            inner: Mutex::new(InnerFeatureConfig { enabled, config }),
+            inner: Mutex::new(Config { enabled, spec }),
             // nvs_namespace,
             // problem_manager: problem_manager.clone(),
             config_store,
@@ -83,7 +69,7 @@ impl FeatureConfigHolder {
         info!("Validating config for feature: {}", self.name);
         let inner = &self.inner.lock().unwrap();
         if inner.enabled.is_enabled() {
-            for (name, config_value) in &inner.config.map {
+            for (name, config_value) in &inner.spec.map {
                 if config_value.required && config_value.value.is_none() {
                     log::error!(
                         "Missing required config value: {} in feature {}",
@@ -138,7 +124,7 @@ impl FeatureConfigHolder {
             )?;
         }
 
-        for (name, config_value) in &inner.config.map {
+        for (name, config_value) in &inner.spec.map {
             let value = config_value.value.to_string();
             let input_type_buf: String;
             let input_type = match &config_value.value {
@@ -263,7 +249,7 @@ impl FeatureConfigHolder {
             }
         }
 
-        for (name, config_value) in inner.config.map.iter_mut() {
+        for (name, config_value) in inner.spec.map.iter_mut() {
             info!("Processing config value: {}", name);
             let str_val = form.get(name).map(|s| s.as_str()).unwrap_or("").trim();
             if str_val.len() == 0 {
@@ -277,7 +263,7 @@ impl FeatureConfigHolder {
             }
         }
 
-        info!("Finished handling form config: {:?}", &inner.config);
+        info!("Finished handling form config: {:?}", &inner.spec);
 
         Ok(())
     }

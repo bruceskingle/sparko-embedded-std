@@ -1,3 +1,28 @@
+use crate::DynFeature;
+use crate::Feature;
+use crate::commands::EspCommands;
+use crate::config_store::EspConfigStoreFactory;
+use crate::http::EspHttpServerManager;
+use crate::{core::Core, wifi::WiFiManager};
+use chrono::Local;
+use esp_idf_svc::sntp::*;
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, http::Method,
+    nvs::EspDefaultNvsPartition,
+};
+use esp_idf_sys::*;
+use log::{error, info};
+use sparko_embedded_std::config::Config;
+use sparko_embedded_std::config::ConfigSpec;
+use sparko_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
+use sparko_embedded_std::http_server::HttpServerManager;
+use sparko_embedded_std::platform::{Platform, PlatformInitializer};
+use sparko_embedded_std::{InitStatus, Status};
+use sparko_embedded_std::{
+    problem::ProblemManager,
+    task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder},
+};
+use std::ffi::CStr;
 use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -9,6 +34,12 @@ use std::{
 
 #[cfg(feature = "mipi-dsi-display")]
 use crate::display::mipi_dsi_display_manager;
+#[cfg(feature = "mono-led")]
+use crate::led::mono_led::MonoLedManager;
+#[cfg(feature = "rgb-led")]
+use crate::led::rgb_led::RgbLedManager;
+#[cfg(feature = "simple-led")]
+use crate::led::simple_led::SimpleLedManager;
 #[cfg(feature = "board-supermini-esp32c3")]
 use esp_idf_hal::gpio::AnyIOPin;
 #[cfg(feature = "mipi-dsi-display")]
@@ -17,47 +48,14 @@ use esp_idf_hal::gpio::{Output, PinDriver};
 use esp_idf_hal::spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 #[cfg(feature = "mipi-dsi-display")]
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
-use esp_idf_svc::{
-    eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, http::Method,
-    nvs::EspDefaultNvsPartition,
-};
-use log::{error, info};
-use sparko_embedded_std::platform::{Platform, PlatformInitializer};
-use sparko_embedded_std::{InitStatus, Status};
-
-use chrono::Local;
-use esp_idf_svc::sntp::*;
-use sparko_embedded_std::config::Config;
-use sparko_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
-use sparko_embedded_std::http_server::HttpServerManager;
 #[cfg(feature = "display")]
 use sparko_embedded_std::{DisplayOrientation, graphics::DisplayManager};
-use sparko_embedded_std::{
-    problem::ProblemManager,
-    task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder},
-};
-
-// use crate::AnyhowResultExt;
-use crate::Feature;
-use crate::commands::EspCommands;
-use crate::config_store::EspConfigStoreFactory;
-use crate::http::EspHttpServerManager;
-#[cfg(feature = "mono-led")]
-use crate::led::mono_led::MonoLedManager;
-#[cfg(feature = "rgb-led")]
-use crate::led::rgb_led::RgbLedManager;
-#[cfg(feature = "simple-led")]
-use crate::led::simple_led::SimpleLedManager;
 
 #[cfg(feature = "led")]
 use crate::led::LedManager;
 
 #[cfg(feature = "touch-driver")]
 use crate::touch::axs5106l::{TouchDriver, TouchDriverFactory};
-use crate::{core::Core, wifi::WiFiManager};
-
-use esp_idf_sys::*;
-use std::ffi::CStr;
 
 fn list_nvs_keys() {
     info!("Listing NVS keys:");
@@ -691,20 +689,20 @@ impl Esp32PlatformBuilder {
         Ok(self)
     }
 
-    pub fn with_feature(mut self, feature: Box<dyn Feature>) -> anyhow::Result<Self> {
+    pub fn with_feature(mut self, feature: Box<dyn DynFeature>) -> anyhow::Result<Self> {
         self.internal_add_feature(feature, false)?;
         Ok(self)
     }
 
     fn internal_add_feature(
         &mut self,
-        feature: Box<dyn Feature>,
+        feature: Box<dyn DynFeature>,
         internal: bool,
     ) -> anyhow::Result<()> {
         // let descriptor = feature.init(&mut self.initializer)?;
         // self.features.push(feature);
 
-        let descriptor = feature.init(&mut self.initializer)?;
+        let descriptor = feature.do_init(&mut self.initializer)?;
         let name = descriptor.name.clone();
         let (config, _valid) = self
             .config_manager_builder
@@ -1045,7 +1043,7 @@ impl Esp32PlatformBuilder {
 }
 
 struct FeatureHolder {
-    feature: Box<dyn Feature>,
+    feature: Box<dyn DynFeature>,
     config: Config,
     name: String,
 }
@@ -1109,10 +1107,11 @@ impl Esp32Platform {
         mut initializer: &mut Esp32PlatformInitializer,
     ) {
         if feature_holder.config.enabled.is_enabled() {
-            match feature_holder
-                .feature
-                .start(self, &mut initializer, &feature_holder.config)
-            {
+            match feature_holder.feature.start_with_config(
+                self,
+                &mut initializer,
+                &feature_holder.config.spec,
+            ) {
                 Ok(_) => info!("Started Feature {}", feature_holder.name),
                 Err(error) => error!("FAILED to start Feature {}: {}", feature_holder.name, error),
             }

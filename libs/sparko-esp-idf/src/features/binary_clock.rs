@@ -23,6 +23,7 @@ use sparko_embedded_std::Layout;
 use sparko_embedded_std::config::Config;
 use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config::ConfigSpecValue;
+use sparko_embedded_std::config::FeatureConfig;
 use sparko_embedded_std::config::TypedValue;
 use sparko_embedded_std::graphics::ClockRenderer;
 use sparko_embedded_std::graphics::DisplayManager;
@@ -62,7 +63,10 @@ pub struct BinaryDigitConfig {
     bits: Vec<usize>,
 }
 
-pub struct BinaryClockConfig {
+#[derive(FeatureConfig)]
+pub struct BinaryClockConfig {}
+
+pub struct BinaryClockLayout {
     // off_colour: smart_leds::RGB<u8>,
     // h1_colour: smart_leds::RGB<u8>,
     // h2_colour: smart_leds::RGB<u8>,
@@ -80,7 +84,7 @@ pub struct BinaryClockConfig {
     // s2_pixels: [usize; 4],
 }
 
-impl BinaryClockConfig {
+impl BinaryClockLayout {
     pub fn default() -> Self {
         Self {
             num_pixels: 20,
@@ -263,34 +267,25 @@ where
 }
 
 impl<T: SmartLeds + 'static> Feature for BinaryClock<T> {
+    type Config = BinaryClockConfig;
+
     fn init(
         &self,
         _initializer: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("BinaryClock::init()");
-        let config = ConfigSpec::builder()
-            // .with(USER_NAME.to_string(), ConfigSpecValue::new(TypedValue::String(32, None), true))?
-            // .with(PASSWORD.to_string(), ConfigSpecValue::new(TypedValue::String(32, None), true))?
-            // .with(HOSTNAME.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // // .with(BASE_SERVICE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // .with(GET_IP_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // // .with(GET_REQUIRES_STRIP.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false))?
-            // .with(UPDATE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            // .with(UPDATE_REQUIRES_ADDRESS.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false ))?
-            // .with(SCHEDULE.to_string(), ConfigSpecValue::new(TypedValue::Cron(None), true))?
-            .build();
 
         Ok(FeatureDescriptor {
             name: "BinaryClock".to_string(),
-            config,
+            config: BinaryClockConfig::to_config_spec()?,
         })
     }
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        _sparko: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
-        config: &Config,
+        _config: BinaryClockConfig,
     ) -> anyhow::Result<()> {
         match self.task.take() {
             Some(task) => initializer.add_task(Box::new(task), "* * * * * *")?,
@@ -306,7 +301,7 @@ pub struct ClockTask<T: SmartLeds> {
     //     smart_leds::RGB<u8>,
     //     ws2812_esp32_rmt_driver::driver::color::LedPixelColorImpl<3, 1, 0, 2, i>>,
     smart_leds: T,
-    config: BinaryClockConfig,
+    config: BinaryClockLayout,
     i: usize,
 }
 
@@ -314,7 +309,7 @@ impl<'d> ClockTask<SmartLedsRmt<'d>> {
     fn new_rmt(smart_leds: SmartLedsRmt<'d>) -> Self {
         ClockTask {
             smart_leds,
-            config: BinaryClockConfig::matrix_8_8(),
+            config: BinaryClockLayout::matrix_8_8(),
             i: 0,
         }
     }
@@ -327,7 +322,7 @@ where
     fn new_spi(smart_leds: SmartLedsSpi<'d, T>) -> Self {
         ClockTask {
             smart_leds,
-            config: BinaryClockConfig::matrix_8_8(),
+            config: BinaryClockLayout::matrix_8_8(),
             i: 0,
         }
     }

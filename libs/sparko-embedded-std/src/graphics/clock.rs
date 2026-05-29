@@ -37,8 +37,8 @@ where
     pub fn new(
         display_manager: &Arc<Mutex<DM>>,
         layout: Layout,
-        clock_color_rgb: &RGB8,
-        bg_color_rgb: &RGB8,
+        clock_color_rgb: RGB8,
+        bg_color_rgb: RGB8,
     ) -> anyhow::Result<Self> {
         let clock_color;
         let bg_color;
@@ -49,8 +49,8 @@ where
 
             // clock_color = manager.map_color(&super::Color::Green);
             // bg_color = manager.map_color(&super::Color::Black);
-            clock_color = manager.map_rgb8(clock_color_rgb);
-            bg_color = manager.map_rgb8(bg_color_rgb);
+            clock_color = manager.map_rgb8(&clock_color_rgb);
+            bg_color = manager.map_rgb8(&bg_color_rgb);
             // The draw target bounding box can be used to determine the size of the display.
             bounding_box = layout(&manager.display().bounding_box());
         }

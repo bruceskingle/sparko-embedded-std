@@ -3,10 +3,10 @@ use std::sync::mpsc::Receiver;
 
 use chrono::Local;
 use log::info;
+use sparko_embedded_std::config::FeatureConfig;
 use sparko_embedded_std::{
-    config::{Config, ConfigSpec, ConfigSpecValue, TypedValue},
+    config::{ConfigSpec, ConfigSpecValue, TypedValue},
     feature::FeatureDescriptor,
-    platform::Platform,
     task::scheduler::ScheduledTask,
     tz::TimeZone,
 };
@@ -27,6 +27,17 @@ pub const TIMEZONE: &str = "time_zone";
 pub const SSID_LEN: usize = 32;
 pub const PASSWORD_LEN: usize = 64;
 pub const HOSTNAME_LEN: usize = 32;
+
+#[derive(FeatureConfig)]
+pub struct CoreConfig {
+    #[config(len = 32)]
+    pub ssid: String,
+    #[config(len = 64)]
+    pub wifi_password: String,
+    #[config(len = 32)]
+    pub mdns_hostname: String,
+    pub time_zone: TimeZone,
+}
 
 pub struct Core {
     // The core feature provides wifi and mDNS
@@ -55,32 +66,15 @@ impl Core {
 }
 
 impl Feature for Core {
+    type Config = CoreConfig;
+
     fn init(
         &self,
         _init: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
-        let config = ConfigSpec::builder()
-            .with(
-                SSID.to_string(),
-                ConfigSpecValue::new(TypedValue::String(SSID_LEN, None), true),
-            )?
-            .with(
-                WIFI_PASSWORD.to_string(),
-                ConfigSpecValue::new(TypedValue::String(PASSWORD_LEN, None), true),
-            )?
-            .with(
-                MDNS_HOSTNAME.to_string(),
-                ConfigSpecValue::new(TypedValue::String(HOSTNAME_LEN, None), true),
-            )?
-            .with(
-                TIMEZONE.to_string(),
-                ConfigSpecValue::new(TypedValue::TimeZone(Some(TimeZone::Utc)), true),
-            )?
-            .build();
-
         Ok(FeatureDescriptor {
             name: CORE_FEATURE_NAME.to_string(),
-            config,
+            config: CoreConfig::to_config_spec()?,
         })
     }
 
@@ -88,27 +82,16 @@ impl Feature for Core {
         &mut self,
         _sparko: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
-        config: &Config,
+        config: CoreConfig,
     ) -> anyhow::Result<()> {
-        let opt_config = config.map.get(TIMEZONE);
-        if let Some(config) = opt_config {
-            if let TypedValue::TimeZone(Some(tz)) = config {
-                Self::set_as_system_timezone(&tz);
-            } else {
-                anyhow::bail!("Timezone config value has wrong type");
-            }
-        } else {
-            Self::set_as_system_timezone(&TimeZone::Utc);
-        };
+        Self::set_as_system_timezone(&config.time_zone);
 
         let local_time = Local::now();
         info!("Local time is: {}", local_time.format("%Y-%m-%d %H:%M:%S"));
 
-        let hostname = config.get_valid(MDNS_HOSTNAME)?;
+        self.mdns_responder.start(config.mdns_hostname)?;
 
-        self.mdns_responder.start(hostname)?;
-
-        let resolve_task = ResolveTask::new(config)?;
+        let resolve_task = ResolveTask {};
         initializer.add_task(Box::new(resolve_task), "0 * * * * *")?;
         Ok(())
     }
@@ -133,11 +116,5 @@ impl ScheduledTask<Esp32Platform> for ResolveTask {
 
     fn name(&self) -> &str {
         "Core"
-    }
-}
-
-impl ResolveTask {
-    pub fn new(_config: &Config) -> anyhow::Result<Self> {
-        Ok(Self {})
     }
 }

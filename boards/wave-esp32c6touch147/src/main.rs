@@ -8,16 +8,19 @@ use embedded_graphics::{
     primitives::Rectangle,
 };
 use log::info;
-use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::{
     DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager,
     listener::Listener, task::scheduler::ScheduledTask,
 };
+use sparko_embedded_std::{config::FeatureConfig, platform::PlatformInitializer};
 use sparko_esp_idf::{
     Esp32Platform, Feature,
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
     touch::axs5106l::TouchPoint,
 };
+
+#[derive(FeatureConfig)]
+struct ImuConfig {}
 
 struct ImuFeature {}
 
@@ -28,16 +31,16 @@ impl ImuFeature {
 }
 
 impl Feature for ImuFeature {
+    type Config = ImuConfig;
     fn init(
         &self,
         init: &mut sparko_esp_idf::Esp32PlatformInitializer,
     ) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor> {
         info!("ImuFeature::init");
-        let config = ConfigSpec::builder().build();
 
         Ok(FeatureDescriptor {
             name: "ImuFeature".to_string(),
-            config,
+            config: ImuConfig::to_config_spec()?,
         })
     }
 
@@ -45,7 +48,7 @@ impl Feature for ImuFeature {
         &mut self,
         sparko: &mut sparko_esp_idf::Esp32Platform,
         initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
-        config: &sparko_embedded_std::config::Config,
+        _config: ImuConfig,
     ) -> anyhow::Result<()> {
         info!("ImuFeature::start");
         sparko.imu_manager.start(Duration::from_millis(50))?;
@@ -98,6 +101,9 @@ impl<DM: DisplayManager + Send + 'static> Listener<TouchPoint> for TouchListener
     }
 }
 
+#[derive(FeatureConfig)]
+struct TouchDrawConfig {}
+
 struct TouchDrawFeature {
     listener: Option<Arc<dyn Listener<TouchPoint>>>,
 }
@@ -109,16 +115,16 @@ impl TouchDrawFeature {
 }
 
 impl Feature for TouchDrawFeature {
+    type Config = TouchDrawConfig;
     fn init(
         &self,
         init: &mut sparko_esp_idf::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("TouchListener::init");
-        let config = ConfigSpec::builder().build();
 
         Ok(FeatureDescriptor {
             name: "TouchListener".to_string(),
-            config,
+            config: TouchDrawConfig::to_config_spec()?,
         })
     }
 
@@ -126,7 +132,7 @@ impl Feature for TouchDrawFeature {
         &mut self,
         sparko: &mut sparko_esp_idf::Esp32Platform,
         initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
-        config: &sparko_embedded_std::config::Config,
+        config: TouchDrawConfig,
     ) -> anyhow::Result<()> {
         let listener: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchListener {
             display_manager: sparko.display_manager.clone(),

@@ -4,12 +4,14 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use croner::Cron;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::http::client::EspHttpConnection;
 use log::info;
 use sparko_embedded_std::config::Config;
 use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config::ConfigSpecValue;
+use sparko_embedded_std::config::FeatureConfig;
 use sparko_embedded_std::config::TypedValue;
 use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
@@ -58,6 +60,22 @@ pub const SCHEDULE: &str = "schedule";
 //     }
 // }
 
+#[derive(FeatureConfig)]
+pub struct DynDns2Config {
+    #[config(len = 32)]
+    user_name: String,
+    #[config(len = 32)]
+    password: String,
+    #[config(len = 64)]
+    hostname: String,
+    #[config(len = 64)]
+    get_ip_url: String,
+    #[config(len = 64)]
+    update_url: String,
+    upd_req_address: bool,
+    schedule: Cron,
+}
+
 pub struct DynDns2 {}
 
 impl DynDns2 {
@@ -67,47 +85,49 @@ impl DynDns2 {
 }
 
 impl Feature for DynDns2 {
+    type Config = DynDns2Config;
+
     fn init(
         &self,
         _initializer: &mut crate::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("DynDns2::init()");
-        let config = ConfigSpec::builder()
-            .with(
-                USER_NAME.to_string(),
-                ConfigSpecValue::new(TypedValue::String(32, None), true),
-            )?
-            .with(
-                PASSWORD.to_string(),
-                ConfigSpecValue::new(TypedValue::String(32, None), true),
-            )?
-            .with(
-                HOSTNAME.to_string(),
-                ConfigSpecValue::new(TypedValue::String(64, None), true),
-            )?
-            // .with(BASE_SERVICE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
-            .with(
-                GET_IP_URL.to_string(),
-                ConfigSpecValue::new(TypedValue::String(64, None), true),
-            )?
-            // .with(GET_REQUIRES_STRIP.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false))?
-            .with(
-                UPDATE_URL.to_string(),
-                ConfigSpecValue::new(TypedValue::String(64, None), true),
-            )?
-            .with(
-                UPDATE_REQUIRES_ADDRESS.to_string(),
-                ConfigSpecValue::new(TypedValue::Bool(None), false),
-            )?
-            .with(
-                SCHEDULE.to_string(),
-                ConfigSpecValue::new(TypedValue::Cron(None), true),
-            )?
-            .build();
+        // let config = ConfigSpec::builder()
+        //     .with(
+        //         USER_NAME.to_string(),
+        //         ConfigSpecValue::new(TypedValue::String(32, None), true),
+        //     )?
+        //     .with(
+        //         PASSWORD.to_string(),
+        //         ConfigSpecValue::new(TypedValue::String(32, None), true),
+        //     )?
+        //     .with(
+        //         HOSTNAME.to_string(),
+        //         ConfigSpecValue::new(TypedValue::String(64, None), true),
+        //     )?
+        //     // .with(BASE_SERVICE_URL.to_string(), ConfigSpecValue::new(TypedValue::String(64, None), true))?
+        //     .with(
+        //         GET_IP_URL.to_string(),
+        //         ConfigSpecValue::new(TypedValue::String(64, None), true),
+        //     )?
+        //     // .with(GET_REQUIRES_STRIP.to_string(), ConfigSpecValue::new(TypedValue::Bool(false), false))?
+        //     .with(
+        //         UPDATE_URL.to_string(),
+        //         ConfigSpecValue::new(TypedValue::String(64, None), true),
+        //     )?
+        //     .with(
+        //         UPDATE_REQUIRES_ADDRESS.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Bool(None), false),
+        //     )?
+        //     .with(
+        //         SCHEDULE.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Cron(None), true),
+        //     )?
+        //     .build();
 
         Ok(FeatureDescriptor {
             name: "DynDNS2".to_string(),
-            config,
+            config: DynDns2Config::to_config_spec()?,
         })
     }
 
@@ -115,11 +135,12 @@ impl Feature for DynDns2 {
         &mut self,
         _sparko: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
-        config: &Config,
+        config: DynDns2Config,
     ) -> anyhow::Result<()> {
+        let schedule_spec = config.schedule.pattern.to_string();
         let resolve_task = ResolveTask::new(config)?;
-        let schedule = config.get_valid(SCHEDULE)?;
-        initializer.add_task(Box::new(resolve_task), &schedule)?;
+
+        initializer.add_task(Box::new(resolve_task), &schedule_spec)?;
         Ok(())
     }
 }
@@ -145,13 +166,13 @@ impl ScheduledTask<Esp32Platform> for ResolveTask {
 }
 
 impl ResolveTask {
-    pub fn new(config: &Config) -> anyhow::Result<Self> {
-        log::info!("Trace 3");
-        let host_name = config.get_valid(HOSTNAME)?;
-        let user_name = config.get_valid(USER_NAME)?;
-        let password = config.get_valid(PASSWORD)?;
-        let update_url = config.get_valid(UPDATE_URL)?;
-        let get_ip_url = config.get_valid(GET_IP_URL)?;
+    pub fn new(config: DynDns2Config) -> anyhow::Result<Self> {
+        // log::info!("Trace 3");
+        // let host_name = config.get_valid(HOSTNAME)?;
+        // let user_name = config.get_valid(USER_NAME)?;
+        // let password = config.get_valid(PASSWORD)?;
+        // let update_url = config.get_valid(UPDATE_URL)?;
+        // let get_ip_url = config.get_valid(GET_IP_URL)?;
 
         // let http_client = embedded_svc::http::client::Client::wrap(EspHttpConnection::new(&esp_idf_svc::http::client::Configuration {
         //     // use_global_ca_store: true,
@@ -159,17 +180,20 @@ impl ResolveTask {
         //     ..Default::default()
         // })?);
 
-        let current_dns = Self::resolve_single(&host_name)?;
-        info!("Current DNS resolution for {}: {}", &host_name, current_dns);
+        let current_dns = Self::resolve_single(&config.hostname)?;
+        info!(
+            "Current DNS resolution for {}: {}",
+            &config.hostname, current_dns
+        );
 
         let addr = Arc::new(Mutex::new(current_dns));
 
         let mut task = Self {
-            host_name,
-            user_name,
-            password,
-            get_ip_url,
-            update_url,
+            host_name: config.hostname,
+            user_name: config.user_name,
+            password: config.password,
+            get_ip_url: config.get_ip_url,
+            update_url: config.update_url,
             addr,
             cnt: 0,
             // http_client,

@@ -12,6 +12,7 @@ use sparko_embedded_std::Layout;
 use sparko_embedded_std::config::Config;
 use sparko_embedded_std::config::ConfigSpec;
 use sparko_embedded_std::config::ConfigSpecValue;
+use sparko_embedded_std::config::FeatureConfig;
 use sparko_embedded_std::config::TypedValue;
 use sparko_embedded_std::config::parse_rgb8;
 use sparko_embedded_std::graphics::ClockRenderer;
@@ -22,11 +23,66 @@ use std::net::IpAddr;
 use std::net::ToSocketAddrs;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 //                                          123456789012345<-------- Max Name Length 15
 pub const CLOCK_COLOR: &str = "clock_color";
 pub const BG_COLOR: &str = "bg_color";
+
+#[derive(FeatureConfig)]
+pub struct AnalogClockConfig {
+    pub clock_color: RGB8,
+    pub bg_color: RGB8,
+}
+
+// impl FeatureConfig for AnalogClockConfig {
+//     fn from_config_spec(spec: &ConfigSpec) -> anyhow::Result<Self> {
+//         let clock_color = if let Some(value) = spec.map.get(&"clock_color".to_uppercase()) {
+//             if let TypedValue::Color(Some(val)) = &value.value {
+//                 *val
+//             } else {
+//                 anyhow::bail!(
+//                     "Invalid type for {}: expected Color, got {:?}",
+//                     "clock_color",
+//                     value.value
+//                 );
+//             }
+//         } else {
+//             anyhow::bail!("Missing required config value: {}", "clock_color");
+//         };
+
+//         let bg_color = if let Some(value) = spec.map.get(&"bg_color".to_uppercase()) {
+//             if let TypedValue::Color(Some(val)) = &value.value {
+//                 Some(*val)
+//             } else {
+//                 anyhow::bail!(
+//                     "Invalid type for {}: expected Color, got {:?}",
+//                     "bg_color",
+//                     value.value
+//                 );
+//             }
+//         } else {
+//             None
+//         };
+
+//         Ok(AnalogClockConfig {
+//             clock_color,
+//             bg_color,
+//         })
+//     }
+
+//     fn to_config_spec(&self) -> anyhow::Result<ConfigSpec> {
+//         Ok(ConfigSpec::builder()
+//             .with(
+//                 "clock_color".to_uppercase(),
+//                 ConfigSpecValue::new(TypedValue::Color(Some(self.clock_color)), true),
+//             )?
+//             .with(
+//                 "bg_color".to_uppercase(),
+//                 ConfigSpecValue::new(TypedValue::Color(self.bg_color), true),
+//             )?
+//             .build())
+//     }
+// }
 
 pub struct AnalogClockBuilder {
     layout: Option<Layout>,
@@ -65,25 +121,27 @@ impl AnalogClock {
 }
 
 impl Feature for AnalogClock {
+    type Config = AnalogClockConfig;
+
     fn init(
         &self,
         _initializer: &mut Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("AnalogClock::init()");
-        let config = ConfigSpec::builder()
-            .with(
-                CLOCK_COLOR.to_string(),
-                ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#00ff00")?)), true),
-            )?
-            .with(
-                BG_COLOR.to_string(),
-                ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#000000")?)), true),
-            )?
-            .build();
+        // let config = ConfigSpec::builder()
+        //     .with(
+        //         CLOCK_COLOR.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#00ff00")?)), true),
+        //     )?
+        //     .with(
+        //         BG_COLOR.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#000000")?)), true),
+        //     )?
+        //     .build();
 
         Ok(FeatureDescriptor {
             name: "AnalogClock".to_string(),
-            config,
+            config: AnalogClockConfig::to_config_spec()?,
         })
     }
 
@@ -91,36 +149,36 @@ impl Feature for AnalogClock {
         &mut self,
         sparko: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
-        config: &Config,
+        config: AnalogClockConfig,
     ) -> anyhow::Result<()> {
-        let clock_color = match config.map.get(CLOCK_COLOR) {
-            Some(color) => {
-                if let TypedValue::Color(Some(val)) = color {
-                    val
-                } else {
-                    &RGB8 { r: 0, g: 255, b: 0 }
-                }
-            }
-            None => &RGB8 { r: 0, g: 255, b: 0 },
-        };
+        // let clock_color = match config.map.get(CLOCK_COLOR) {
+        //     Some(color) => {
+        //         if let TypedValue::Color(Some(val)) = color {
+        //             val
+        //         } else {
+        //             &RGB8 { r: 0, g: 255, b: 0 }
+        //         }
+        //     }
+        //     None => &RGB8 { r: 0, g: 255, b: 0 },
+        // };
 
-        let bg_color = match config.map.get(BG_COLOR) {
-            Some(color) => {
-                if let TypedValue::Color(Some(val)) = color {
-                    val
-                } else {
-                    &RGB8 { r: 0, g: 0, b: 0 }
-                }
-            }
-            None => &RGB8 { r: 0, g: 0, b: 0 },
-        };
+        // let bg_color = match config.map.get(BG_COLOR) {
+        //     Some(color) => {
+        //         if let TypedValue::Color(Some(val)) = color {
+        //             val
+        //         } else {
+        //             &RGB8 { r: 0, g: 0, b: 0 }
+        //         }
+        //     }
+        //     None => &RGB8 { r: 0, g: 0, b: 0 },
+        // };
         initializer.add_task(
             Box::new(ResolveTask {
                 clock_renderer: ClockRenderer::new(
                     &sparko.display_manager,
                     self.layout,
-                    clock_color,
-                    bg_color,
+                    config.clock_color,
+                    config.bg_color,
                 )?,
             }),
             "* * * * * *",

@@ -6,6 +6,7 @@ use rgb::RGB8;
 use std::str::FromStr;
 
 use crate::{problem::ProblemId, tz::TimeZone};
+pub use feature_config_derive::FeatureConfig;
 
 pub fn parse_rgb8(hex_str: &str) -> anyhow::Result<RGB8> {
     let hex_str = hex_str.trim_start_matches('#');
@@ -30,6 +31,11 @@ pub fn format_opt_rgb8(color: &Option<RGB8>) -> String {
     } else {
         "".to_string()
     }
+}
+
+pub trait FeatureConfig: Sized {
+    fn from_config_spec(spec: &ConfigSpec) -> anyhow::Result<Self>;
+    fn to_config_spec() -> anyhow::Result<ConfigSpec>;
 }
 
 #[derive(Clone, PartialEq)]
@@ -127,17 +133,17 @@ impl TypedValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub enabled: EnabledState,
-    pub map: IndexMap<String, TypedValue>,
+    pub spec: ConfigSpec,
 }
 
 impl Config {
     // should be called get_required_as_string
     pub fn get_valid(&self, key: &str) -> anyhow::Result<String> {
-        if let Some(value) = self.map.get(key) {
-            Ok(value.to_string())
+        if let Some(value) = self.spec.map.get(key) {
+            Ok(value.value.to_string())
         } else {
             Err(anyhow!("Config value {} is missing", key))
         }
@@ -147,15 +153,15 @@ impl Config {
         &self,
         key: &str,
     ) -> anyhow::Result<heapless::String<N>> {
-        if let Some(value) = self.map.get(key) {
-            Ok(value.to_heapless::<N>()?)
+        if let Some(value) = self.spec.map.get(key) {
+            Ok(value.value.to_heapless::<N>()?)
         } else {
             Err(anyhow!("Config value {} is missing", key))
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConfigSpecValue {
     pub value: TypedValue,
     pub required: bool,
@@ -212,7 +218,7 @@ impl ConfigSpecBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConfigSpec {
     pub map: IndexMap<String, ConfigSpecValue>,
 }

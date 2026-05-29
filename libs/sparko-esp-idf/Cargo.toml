@@ -38,6 +38,7 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 sparko-embedded-std = { path = "../sparko-embedded-std"}
+#feature-config-derive = { path = "../feature-config-derive"}
 
 [features]
 default = ["espidf"]

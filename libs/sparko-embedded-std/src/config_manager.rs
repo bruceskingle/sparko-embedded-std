@@ -8,7 +8,7 @@ use log::info;
 
 use crate::{
     command::Commands,
-    config::{Config, ConfigStoreFactory},
+    config::{Config, ConfigSpec, ConfigStoreFactory},
     feature::{FeatureConfigHolder, FeatureDescriptor},
     http_server::{HttpMethod, HttpServerManager},
     problem::ProblemManager,

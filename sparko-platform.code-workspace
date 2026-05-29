@@ -5,6 +5,10 @@
 			"path": "."
 		},
 		{
+			"name": "feature-config-derive",
+			"path": "libs/feature-config-derive"
+		},
+		{
 			"name": "sparko-embedded-std",
 			"path": "libs/sparko-embedded-std"
 		},

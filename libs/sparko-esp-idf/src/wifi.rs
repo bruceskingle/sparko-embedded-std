@@ -1,6 +1,10 @@
-// use embedded_svc::wifi::{Configuration, AuthMethod};
+use crate::core::CoreConfig;
 use embedded_svc::wifi::ClientConfiguration;
 use esp_idf_hal::modem::WifiModemPeripheral;
+use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::handle::RawHandle;
+use esp_idf_svc::nvs::EspNvsPartition;
+use esp_idf_svc::nvs::NvsDefault;
 use esp_idf_svc::wifi::AccessPointConfiguration;
 use esp_idf_svc::wifi::AuthMethod;
 use esp_idf_svc::wifi::Configuration;
@@ -8,18 +12,15 @@ use esp_idf_svc::wifi::EspWifi;
 use esp_idf_svc::wifi::ScanMethod;
 use esp_idf_svc::wifi::ScanSortMethod;
 use esp_idf_svc::wifi::WifiEvent;
+use log::info;
 use sparko_embedded_std::config::Config;
+use sparko_embedded_std::config::FeatureConfig;
 use sparko_embedded_std::problem::Problem;
 use sparko_embedded_std::problem::ProblemManager;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
-use log::info;
-use esp_idf_svc::handle::RawHandle;
-use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::nvs::EspNvsPartition;
-use esp_idf_svc::nvs::NvsDefault;
 
 use crate::core::PASSWORD_LEN;
 use crate::core::SSID_LEN;
@@ -27,7 +28,9 @@ use crate::core::SSID_LEN;
 pub struct WiFiManager<'a> {
     wifi: EspWifi<'a>,
     sys_loop: EspSystemEventLoop,
-    wifi_sub: Arc<Mutex<Option<esp_idf_svc::eventloop::EspSubscription<'a, esp_idf_svc::eventloop::System>>>>,
+    wifi_sub: Arc<
+        Mutex<Option<esp_idf_svc::eventloop::EspSubscription<'a, esp_idf_svc::eventloop::System>>>,
+    >,
     problem: Arc<Problem>,
     wifi_sender: Sender<Ipv4Addr>,
 }
@@ -52,8 +55,6 @@ impl WiFiManager<'_> {
     }
 
     pub fn start_access_point(&mut self) -> anyhow::Result<std::net::Ipv4Addr> {
-        
-
         let ap_config = AccessPointConfiguration {
             ssid: heapless::String::<SSID_LEN>::try_from("ESP32-Setup").unwrap(),
             password: heapless::String::<PASSWORD_LEN>::try_from("password").unwrap(),
@@ -65,7 +66,8 @@ impl WiFiManager<'_> {
 
         info!("Starting WiFi Access Point with config: {:?}", ap_config);
 
-        self.wifi.set_configuration(&Configuration::AccessPoint(ap_config))?;
+        self.wifi
+            .set_configuration(&Configuration::AccessPoint(ap_config))?;
 
         // self.wifi.start().await?;
 
@@ -116,7 +118,7 @@ impl WiFiManager<'_> {
                 esp_idf_sys::esp_netif_dhcp_option_mode_t_ESP_NETIF_OP_SET,
                 114,
                 url.as_ptr() as *mut _,
-                url.len() as u32
+                url.len() as u32,
             );
 
             let res_start = esp_idf_sys::esp_netif_dhcps_start(handle);
@@ -129,11 +131,15 @@ impl WiFiManager<'_> {
                 ip: esp_idf_sys::esp_ip_addr_t {
                     type_: 0,
                     u_addr: esp_idf_sys::_ip_addr__bindgen_ty_1 {
-                        ip4: esp_idf_sys::esp_ip4_addr_t { addr: 0 }
-                    }
-                }
+                        ip4: esp_idf_sys::esp_ip4_addr_t { addr: 0 },
+                    },
+                },
             };
-            let res_get = esp_idf_sys::esp_netif_get_dns_info(handle, esp_idf_sys::esp_netif_dns_type_t_ESP_NETIF_DNS_MAIN, &mut dns_out);
+            let res_get = esp_idf_sys::esp_netif_get_dns_info(
+                handle,
+                esp_idf_sys::esp_netif_dns_type_t_ESP_NETIF_DNS_MAIN,
+                &mut dns_out,
+            );
             if res_get == esp_idf_sys::ESP_OK {
                 let addr_net = dns_out.ip.u_addr.ip4.addr;
                 let octets = addr_net.to_be_bytes(); // network to host
@@ -151,19 +157,19 @@ impl WiFiManager<'_> {
     }
 
     pub fn start_client(&mut self, config: &Config) -> anyhow::Result<std::net::Ipv4Addr> {
-        let wifi_configuration: embedded_svc::wifi::Configuration = embedded_svc::wifi::Configuration::Client(ClientConfiguration {
-            ssid: config.get_required_as_heapless::<32>(crate::core::SSID)?,
-            bssid: None,
-            auth_method: embedded_svc::wifi::AuthMethod::WPA2Personal,
-            password: config.get_required_as_heapless::<64>(crate::core::WIFI_PASSWORD)?,
-            channel: None,
-            scan_method: ScanMethod::CompleteScan(ScanSortMethod::Security),
-            pmf_cfg: esp_idf_svc::wifi::PmfConfiguration::Capable{ required: false },
-        });
-
+        let core_config = CoreConfig::from_config_spec(&config.spec)?;
+        let wifi_configuration: embedded_svc::wifi::Configuration =
+            embedded_svc::wifi::Configuration::Client(ClientConfiguration {
+                ssid: core_config.ssid,
+                bssid: None,
+                auth_method: embedded_svc::wifi::AuthMethod::WPA2Personal,
+                password: core_config.wifi_password,
+                channel: None,
+                scan_method: ScanMethod::CompleteScan(ScanSortMethod::Security),
+                pmf_cfg: esp_idf_svc::wifi::PmfConfiguration::Capable { required: false },
+            });
 
         self.wifi.set_configuration(&wifi_configuration)?;
-
 
         let problem = self.problem.clone();
 
@@ -241,7 +247,7 @@ impl WiFiManager<'_> {
                 Ok(_) => {
                     info!("Wifi connected");
                     break;
-                },
+                }
                 Err(error) => {
                     log::error!("Failed to connect to WiFi: {}", error);
                     retry_cnt -= 1;
@@ -249,11 +255,13 @@ impl WiFiManager<'_> {
                         log::error!("Failed to connect to WiFi after multiple attempts");
                         return Err(error.into());
                     }
-                    info!("Failed to connect to Wifi {} attempts remaining...", retry_cnt);
+                    info!(
+                        "Failed to connect to Wifi {} attempts remaining...",
+                        retry_cnt
+                    );
                     std::thread::sleep(std::time::Duration::from_secs(5));
-                },
+                }
             }
-            
         }
 
         // Wait for IP (this replaces wait_netif_up)
@@ -279,7 +287,7 @@ impl WiFiManager<'_> {
         // let ip_info = self.wifi.sta_netif().get_ip_info()?;
 
         println!("Wifi DHCP info: {:?}", ip_info);
-        
+
         // EspPing::default().ping(ip_info.subnet.gateway, &esp_idf_svc::ping::Configuration::default())?;
 
         self.wifi_sender.send(ip_info.ip)?;

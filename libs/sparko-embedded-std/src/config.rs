@@ -119,9 +119,8 @@ impl TypedValue {
             TypedValue::String(len, _) => {
                 if str_val.len() > *len as usize {
                     anyhow::bail!("String value too long: max length is {}", len);
-                } else {
-                    TypedValue::String(*len, Some(str_val.to_string()))
                 }
+                TypedValue::String(*len, Some(str_val.to_string()))
             }
             TypedValue::Int32(_) => TypedValue::Int32(Some(str_val.parse::<i32>()?)),
             TypedValue::Int64(_) => TypedValue::Int64(Some(str_val.parse::<i64>()?)),

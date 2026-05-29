@@ -19,21 +19,13 @@ use crate::{
 use sparko_embedded_std::platform::PlatformInitializer;
 
 pub const CORE_FEATURE_NAME: &str = "core";
-pub const SSID: &str = "ssid";
-pub const WIFI_PASSWORD: &str = "wifi_password";
-pub const MDNS_HOSTNAME: &str = "mdns_hostname";
-pub const TIMEZONE: &str = "time_zone";
-
 pub const SSID_LEN: usize = 32;
 pub const PASSWORD_LEN: usize = 64;
-pub const HOSTNAME_LEN: usize = 32;
 
 #[derive(FeatureConfig)]
 pub struct CoreConfig {
-    #[config(len = 32)]
-    pub ssid: String,
-    #[config(len = 64)]
-    pub wifi_password: String,
+    pub ssid: heapless::String<SSID_LEN>,
+    pub wifi_password: heapless::String<PASSWORD_LEN>,
     #[config(len = 32)]
     pub mdns_hostname: String,
     pub time_zone: TimeZone,

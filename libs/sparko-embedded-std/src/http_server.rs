@@ -80,9 +80,18 @@ button:active { background: #005bb5; }
   gap: 8px;
 }
 
-.form_row input[type="text"] {
+.form_row input[type="text"],
+.form_row input[type="password"] {
   flex: 1;
   width: auto;
+}
+
+.form_row button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .form_row input[type="color"] {

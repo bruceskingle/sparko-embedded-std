@@ -239,11 +239,11 @@ impl ConfigStore for EspConfigStore {
                 }
             }
         };
+        config_value.value = result;
         info!(
             "Finished reading config value {} from NVS: {:?}",
-            name, result
+            name, config_value
         );
-        config_value.value = result;
     }
 
     fn save(
@@ -252,29 +252,35 @@ impl ConfigStore for EspConfigStore {
         config_value: &mut ConfigSpecValue,
         str_val: &str,
     ) -> anyhow::Result<()> {
-        log::info!("Config value {} is {}", name, str_val);
+        // What the log shows of the value, nothing if it is a secret.
+        let shown = config_value.redact(str_val);
+        log::info!("Config value {} is {}", name, shown);
         match config_value.value.from_str(str_val) {
             Ok(new_value) => {
                 if config_value.value.is_none() || new_value != config_value.value {
-                    log::info!(
-                        "Config value {} changed from {:?} to {:?}",
-                        name,
-                        config_value.value,
-                        new_value
-                    );
+                    if config_value.secret {
+                        log::info!("Config value {} changed", name);
+                    } else {
+                        log::info!(
+                            "Config value {} changed from {:?} to {:?}",
+                            name,
+                            config_value.value,
+                            new_value
+                        );
+                    }
 
                     config_value.value = new_value;
                     // Save to NVS
-                    log::info!("Save to NVS Config value {} is {}", name, str_val);
+                    log::info!("Save to NVS Config value {} is {}", name, shown);
                     match &config_value.value {
                         TypedValue::String(len, Some(val)) => {
-                            info!("Saving string value for {} to NVS: {}", name, val);
+                            info!("Saving string value for {} to NVS: {}", name, shown);
                             match self.nvs_namespace.set_str(name, val) {
-                                Ok(_) => info!("Saved OK Config value {} is {}", name, str_val),
+                                Ok(_) => info!("Saved OK Config value {} is {}", name, shown),
                                 Err(error) => log::error!(
                                     "Failed to save Config value {} is {}: {}",
                                     name,
-                                    str_val,
+                                    shown,
                                     error
                                 ),
                             }
@@ -287,7 +293,7 @@ impl ConfigStore for EspConfigStore {
                                     config_value,
                                     self.nvs_namespace.get_str(name, buf.as_mut_slice()),
                                 ) {
-                                    info!("Read back of {} is {}", name, str)
+                                    info!("Read back of {} is {}", name, config_value.redact(str))
                                 } else {
                                     info!("Read back of {} is None", name)
                                 }
@@ -321,11 +327,11 @@ impl ConfigStore for EspConfigStore {
                         _ => anyhow::bail!(
                             "Invalid config value for {}: {:?}",
                             name,
-                            config_value.value
+                            config_value
                         ),
                     };
                 } else {
-                    log::info!("Config value {} unchanged: {:?}", name, config_value.value);
+                    log::info!("Config value {} unchanged: {:?}", name, config_value);
                 }
                 Ok(())
             }

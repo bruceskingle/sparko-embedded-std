@@ -1,6 +1,10 @@
 {
 	"folders": [
 		{
+			"name": "marco-sparko",
+			"path": "../marco-sparko"
+		},
+		{
 			"name": "Root Files",
 			"path": "."
 		},
@@ -39,6 +43,9 @@
 		{
 			"name": "xiao-esp32c6",
 			"path": "boards/xiao-esp32c6"
+		},
+		{
+			"path": "../../.marco-sparko-cache"
 		}
 	],
 	"settings": {
@@ -58,6 +65,7 @@
 			// "boards/wave-esp32c6touch147/Cargo.toml",
 			// "boards/xiao-esp32c6/Cargo.toml",
 			"libs/sparko-embedded-std/Cargo.toml", // This is needed
+			"../marco-sparko/Cargo.toml",
 			// "libs/sparko-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",

@@ -160,11 +160,16 @@ impl Config {
     }
 }
 
-#[derive(Debug, Clone)]
+/// Shown in place of a secret value in logs.
+pub const REDACTED: &str = "<redacted>";
+
+#[derive(Clone)]
 pub struct ConfigSpecValue {
     pub value: TypedValue,
     pub required: bool,
     pub problem_id: ProblemId,
+    /// A password or key, which is never shown on the config page or written to the log, see redact.
+    pub secret: bool,
 }
 
 impl ConfigSpecValue {
@@ -173,7 +178,35 @@ impl ConfigSpecValue {
             value,
             required,
             problem_id: None,
+            secret: false,
         }
+    }
+
+    pub fn with_secret(mut self, secret: bool) -> Self {
+        self.secret = secret;
+        self
+    }
+
+    /// text, e.g. the value as entered, unless this is a secret, for the log.
+    pub fn redact<'a>(&self, text: &'a str) -> &'a str {
+        if self.secret { REDACTED } else { text }
+    }
+}
+
+/// Debug output goes to the log, so a secret's value is hidden.
+impl std::fmt::Debug for ConfigSpecValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = f.debug_struct("ConfigSpecValue");
+        if self.secret && !self.value.is_none() {
+            debug.field("value", &REDACTED);
+        } else {
+            debug.field("value", &self.value);
+        }
+        debug
+            .field("required", &self.required)
+            .field("problem_id", &self.problem_id)
+            .field("secret", &self.secret)
+            .finish()
     }
 }
 

@@ -16,10 +16,13 @@ use sparko_embedded_std::graphics::DisplayManager;
 use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
 
+/// Optional, so that the clock still starts on a board where they have never been set.
 #[derive(FeatureConfig)]
 pub struct AnalogClockConfig {
-    pub clock_color: RGB8,
-    pub bg_color: RGB8,
+    /// Green if not set.
+    pub clock_color: Option<RGB8>,
+    /// Black if not set.
+    pub bg_color: Option<RGB8>,
 }
 
 pub struct AnalogClockBuilder {
@@ -115,8 +118,8 @@ impl Feature for AnalogClock {
                 clock_renderer: ClockRenderer::new(
                     &sparko.display_manager,
                     self.layout,
-                    config.clock_color,
-                    config.bg_color,
+                    config.clock_color.unwrap_or(RGB8 { r: 0, g: 255, b: 0 }),
+                    config.bg_color.unwrap_or(RGB8 { r: 0, g: 0, b: 0 }),
                 )?,
             }),
             "* * * * * *",

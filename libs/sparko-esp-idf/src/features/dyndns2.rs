@@ -23,7 +23,7 @@ use crate::{Feature, FeatureDescriptor};
 pub struct DynDns2Config {
     #[config(len = 32)]
     user_name: String,
-    #[config(len = 32)]
+    #[config(len = 32, secret)]
     password: String,
     #[config(len = 64)]
     hostname: String,

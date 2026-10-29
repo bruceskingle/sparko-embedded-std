@@ -125,6 +125,36 @@ impl FeatureConfigHolder {
         }
 
         for (name, config_value) in &inner.spec.map {
+            if config_value.secret {
+                // Never sent to the browser: an empty field keeps the saved value, see handle_config_form.
+                let is_set = !config_value.value.is_none();
+                let placeholder = if is_set { "Set, leave empty to keep" } else { "Not set" };
+                let maxlength = match &config_value.value {
+                    TypedValue::String(len, _) => format!(r#" maxlength="{len}""#),
+                    _ => String::new(),
+                };
+                if is_set && !config_value.required {
+                    // Clear Password only ticks the hidden clear_ checkbox, which Save then acts on, see
+                    // handle_config_form, and says so in the field. Typing a new value unticks it.
+                    resp.write(format!(r#"
+                        <!-- Secret field {name}-->
+                        <label for="{name}">{name}</label>
+                        <div class="form_row">
+                        <input id="{name}" name="{name}" type="password"{maxlength} autocomplete="new-password" placeholder="{placeholder}" value=""
+                            oninput="document.getElementById('clear_{name}').checked = false">
+                        <input id="clear_{name}" name="clear_{name}" type="checkbox" value="true" hidden>
+                        <button type="button" onclick="document.getElementById('clear_{name}').checked = true; const field = document.getElementById('{name}'); field.value = ''; field.placeholder = 'Cleared'">Clear Password</button>
+                        </div>
+            "#).as_bytes())?;
+                } else {
+                    resp.write(format!(r#"
+                        <!-- Secret field {name}-->
+                        <label for="{name}">{name}</label>
+                        <input id="{name}" name="{name}" type="password"{maxlength} autocomplete="new-password" placeholder="{placeholder}" value="">
+            "#).as_bytes())?;
+                }
+                continue;
+            }
             let value = config_value.value.to_string();
             let input_type_buf: String;
             let input_type = match &config_value.value {
@@ -260,7 +290,14 @@ impl FeatureConfigHolder {
         for (name, config_value) in inner.spec.map.iter_mut() {
             info!("Processing config value: {}", name);
             let str_val = form.get(name).map(|s| s.as_str()).unwrap_or("").trim();
-            if str_val.len() == 0 {
+            if config_value.secret && str_val.len() == 0 {
+                // The page never shows a secret, so an empty field keeps it, unless clear was ticked.
+                let clear = form.get(&format!("clear_{name}")).is_some_and(|value| value == "true");
+                if clear && !config_value.value.is_none() {
+                    log::info!("Clearing secret config value {}", name);
+                    self.config_store.remove(name, config_value)?;
+                }
+            } else if str_val.len() == 0 {
                 log::info!("Config value {} is None", name);
                 if !config_value.value.is_none() {
                     log::info!("Setting optional config value {} to None", name);

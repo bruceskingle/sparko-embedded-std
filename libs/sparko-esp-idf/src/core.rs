@@ -25,6 +25,7 @@ pub const PASSWORD_LEN: usize = 64;
 #[derive(FeatureConfig)]
 pub struct CoreConfig {
     pub ssid: heapless::String<SSID_LEN>,
+    #[config(secret)]
     pub wifi_password: heapless::String<PASSWORD_LEN>,
     #[config(len = 32)]
     pub mdns_hostname: String,

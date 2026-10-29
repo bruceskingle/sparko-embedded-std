@@ -24,6 +24,9 @@ use syn::{
 /// The `N` in `heapless::String<N>` may be a literal (`64`) or a named
 /// constant (`PASSWORD_LEN`). Field names must be 15 characters or fewer.
 ///
+/// `#[config(secret)]` on a string field marks a password or key, which the
+/// config page never shows and the log never contains, see `ConfigSpecValue::secret`.
+///
 /// # Example
 ///
 /// ```rust
@@ -33,6 +36,7 @@ use syn::{
 /// pub struct CoreConfig {
 ///     #[config(len = 32)]
 ///     pub ssid: String,
+///     #[config(secret)]
 ///     pub wifi_password: heapless::String<64>,
 ///     pub ap_password: heapless::String<SSID_LEN>,
 ///     pub time_zone: TimeZone,
@@ -64,8 +68,10 @@ fn parse_string_len_attr(field: &syn::Field) -> syn::Result<Option<Expr>> {
                 let value = meta.value()?; // consumes the `=`
                 len_expr = Some(value.parse()?);
                 Ok(())
+            } else if meta.path.is_ident("secret") {
+                Ok(()) // see parse_secret_attr
             } else {
-                Err(meta.error("unknown config attribute; expected `len = N`"))
+                Err(meta.error("unknown config attribute; expected `len = N` or `secret`"))
             }
         })?;
         if len_expr.is_some() {
@@ -73,6 +79,25 @@ fn parse_string_len_attr(field: &syn::Field) -> syn::Result<Option<Expr>> {
         }
     }
     Ok(None)
+}
+
+/// Whether a field has `#[config(secret)]`.
+fn parse_secret_attr(field: &syn::Field) -> syn::Result<bool> {
+    let mut secret = false;
+    for attr in &field.attrs {
+        if !attr.path().is_ident("config") {
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("secret") {
+                secret = true;
+            } else if meta.path.is_ident("len") {
+                let _: Expr = meta.value()?.parse()?; // see parse_string_len_attr
+            }
+            Ok(())
+        })?;
+    }
+    Ok(secret)
 }
 
 // ── type classification ──────────────────────────────────────────────────────
@@ -401,7 +426,7 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
 /// All values are `None` — `to_config_spec` describes the schema, not an instance.
 /// For string fields the length expression is emitted as-is, so both literals
 /// and named constants work correctly.
-fn emit_to_with(kind: &FieldKind, key: &str) -> TokenStream2 {
+fn emit_to_with(kind: &FieldKind, key: &str, secret: bool) -> TokenStream2 {
     let typed_value_none = match kind {
         FieldKind::Str { len, .. } => quote! { TypedValue::String(#len, None) },
         FieldKind::Known {
@@ -442,7 +467,7 @@ fn emit_to_with(kind: &FieldKind, key: &str) -> TokenStream2 {
     quote! {
         .with(
             #key.to_string(),
-            ConfigSpecValue::new(#typed_value_none, #required),
+            ConfigSpecValue::new(#typed_value_none, #required).with_secret(#secret),
         )?
     }
 }
@@ -478,9 +503,16 @@ fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let field_ident = field.ident.as_ref().unwrap();
         let key = field_ident.to_string();
         let kind = field_kind(field)?;
+        let secret = parse_secret_attr(field)?;
+        if secret && !matches!(kind, FieldKind::Str { .. }) {
+            return Err(syn::Error::new_spanned(
+                field,
+                "`#[config(secret)]` is only valid on `String` or `heapless::String<N>` fields",
+            ));
+        }
 
         from_extractions.push(emit_from_extraction(field_ident, &kind, &key));
-        to_withs.push(emit_to_with(&kind, &key));
+        to_withs.push(emit_to_with(&kind, &key, secret));
         from_field_inits.push(quote! { #field_ident, });
     }
 

@@ -234,7 +234,8 @@ impl ConfigManager {
     }
 
     pub fn handle_config_form(&self, form: &IndexMap<String, String>) -> anyhow::Result<()> {
-        info!("Handling config form submission: {:?}", form);
+        // Only the names, as the values include secrets.
+        info!("Handling config form submission: {:?}", form.keys().collect::<Vec<_>>());
         for (_feature_name, feature_config) in &self.features {
             feature_config.handle_config_form(form)?;
         }

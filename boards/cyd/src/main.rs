@@ -1,7 +1,7 @@
-use sparko_esp_idf::Esp32Platform;
 use sparko_esp_idf::features::analog_clock::AnalogClock;
 use sparko_esp_idf::features::binary_clock::BinaryClock;
 use sparko_esp_idf::features::dyndns2::DynDns2;
+use sparko_esp_idf::Esp32Platform;
 
 fn main() -> anyhow::Result<()> {
     let (builder, remainder) = Esp32Platform::builder()?;

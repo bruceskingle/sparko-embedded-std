@@ -71,6 +71,19 @@ log a secret's value anywhere else either.
 string, status codes) uses `EspHttpServerManager::on` directly. Making the HTTP server hardware independent has been
 tried twice and does not work with the ESP HTTP server and Rust's type system: do not try again (see `http.rs`).
 
+## Device API
+
+When a board's `sdkconfig.defaults` sets `CONFIG_ESP_HTTPS_SERVER_ENABLE=y` (with the mbedtls dynamic buffer options,
+see marco-sparko's `capture/sdkconfig.defaults`), the platform runs an HTTPS API on port 443 once on the Wi-Fi
+(`api.rs`, cfg `esp_idf_esp_https_server_enable`, made visible by `sparko-esp-idf/build.rs`), next to the HTTP server,
+which stays for the captive portal and `/config`. The device makes an EC P-256 key and self-signed certificate on
+first boot and keeps them in the `device` NVS namespace (`identity.rs`); its ID is the Wi-Fi MAC. Endpoints:
+`GET /api/info`, `GET`/`POST /api/config` (JSON from `ConfigSpec`, `config_json.rs` in sparko-embedded-std; secrets
+only as `isSet`; POST changes only what it names, checks everything before saving, null clears an optional setting,
+takes effect after a restart), `POST /api/restart`. Features add their own with `sparko.api_server`'s `on`. Board
+crates name their firmware with `with_firmware`. HTTPS costs about 20 KB of heap idle on the CYD. No authentication
+yet: adoption (pairing code, device key) is next.
+
 ## Conventions
 
 - Builders: `Type::builder()`, chainable `with_*`, callable `add_*`, `build()` shrinks collections, which are then

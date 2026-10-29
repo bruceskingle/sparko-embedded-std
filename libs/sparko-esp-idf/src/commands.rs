@@ -20,6 +20,22 @@ impl EspCommands {
     // }
 }
 
+/// A page saying what happened, styled as the others, which goes back to the home page after 5 seconds.
+fn message_page(resp: &mut dyn Write, title: &str, message: &str) -> anyhow::Result<()> {
+    resp.write(format!(r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="refresh" content="5;url=/" />
+<title>{title}</title>
+<link rel="stylesheet" href="/main.css">
+</head>
+<body><div class="page"><h1>{title}</h1><p>{message}</p><p><a href="/">Home</a></p></div></body>
+</html>"#).as_bytes())?;
+    Ok(())
+}
+
 impl Commands for EspCommands {
     fn show_config_page(
         &self,
@@ -27,6 +43,8 @@ impl Commands for EspCommands {
         ) -> anyhow::Result<()>
     {
         resp.write(format!(r#"
+                        <section class="feature">
+                        <h2>Commands</h2>
                         <form method="POST" action="/command">
                         <label for="command">Command</label>
                             <select name="command" id="command">
@@ -35,6 +53,7 @@ impl Commands for EspCommands {
                             </select>
                             <button type="submit">Execute</button>
                         </form>
+                        </section>
                 "#).as_bytes())?;
         Ok(())
     }
@@ -44,7 +63,7 @@ impl Commands for EspCommands {
             match command.map(|s| s.as_str()) {
                 Some("restart") => {
                     info!("Restart command received, restarting...");
-                    resp.write(b"<!doctype html><html><head><meta http-equiv=\"refresh\" content=\"5;url=/\" /><title>Restarting</title></head><body><p>Device restarting, redirecting to root in 5 seconds...</p><script>setTimeout(()=>{window.location.href='/';},5000);</script></body></html>")?;
+                    message_page(resp, "Restarting", "The device is restarting, this page goes to its home page in 5 seconds.")?;
 
                     std::thread::spawn(|| {
                         std::thread::sleep(std::time::Duration::from_secs(2));
@@ -55,10 +74,10 @@ impl Commands for EspCommands {
                     info!("Factory reset command received, erasing config and restarting...");
                     if let Err(e) = config_manager.erase_config(CORE_FEATURE_NAME) {
                         log::error!("Failed to erase config: {}", e);
-                        resp.write(b"<!doctype html><html><head><meta http-equiv=\"refresh\" content=\"5;url=/\" /><title>Factory reset failed</title></head><body><p>Failed to erase config.</p><script>setTimeout(()=>{window.location.href='/';},5000);</script></body></html>")?;
+                        message_page(resp, "Factory reset failed", "The settings could not be erased.")?;
                     }
                     else {
-                        resp.write(b"<!doctype html><html><head><meta http-equiv=\"refresh\" content=\"5;url=/\" /><title>Factory reset</title></head><body><p>Config erased. Device restarting, redirecting to root in 5 seconds...</p><script>setTimeout(()=>{window.location.href='/';},5000);</script></body></html>")?;
+                        message_page(resp, "Factory reset", "The settings have been erased and the device is restarting, with its own Wi-Fi network for setting it up again.")?;
                     
                         std::thread::spawn(|| {
                             std::thread::sleep(std::time::Duration::from_secs(2));
@@ -68,11 +87,11 @@ impl Commands for EspCommands {
                 },
                 Some(cmd) => {
                     log::warn!("Unknown command received: {}", cmd);
-                        resp.write(format!("Unknown command received: {}", cmd).as_bytes())?;
+                        message_page(resp, "Unknown command", &format!("There is no command {cmd}."))?;
                 },
                 None => {
                     log::warn!("No command received in form");
-                        resp.write(b"No command received in form")?;
+                        message_page(resp, "No command", "No command was chosen.")?;
                 }
             }
 

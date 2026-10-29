@@ -15,9 +15,11 @@ use sparko_embedded_std::{
 use crate::core::CORE_FEATURE_NAME;
 
 const FEATURE_NAMESPACE_NAME: &str = "feature";
-const RESERVED_FEATURE_NAMES: [&str; 6] = [
+const RESERVED_FEATURE_NAMES: [&str; 7] = [
     CORE_FEATURE_NAME,
     FEATURE_NAMESPACE_NAME,
+    // The device's identity, see identity.rs.
+    "device",
     "wifi",
     "phy",
     "bt_config",
@@ -257,6 +259,8 @@ impl ConfigStore for EspConfigStore {
         log::info!("Config value {} is {}", name, shown);
         match config_value.value.from_str(str_val) {
             Ok(new_value) => {
+                // e.g. "Required value ... is missing", from when it was loaded, which this value fixes.
+                self.problem_manager.clear(config_value.problem_id);
                 if config_value.value.is_none() || new_value != config_value.value {
                     if config_value.secret {
                         log::info!("Config value {} changed", name);

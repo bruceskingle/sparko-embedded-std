@@ -194,6 +194,8 @@ pub struct Remainder {
     // pub timg0: esp_hal::peripherals::TIMG0<'static>,
     pub i2c0: esp_idf_hal::i2c::I2C0<'static>,
     pub i2c1: esp_idf_hal::i2c::I2C1<'static>,
+    /// Not with the sd-card feature, which uses it for the SD card slot.
+    #[cfg(not(feature = "sd-card"))]
     pub spi3: esp_idf_hal::spi::SPI3<'static>,
     pub rmt: esp_idf_hal::rmt::RMT,
 }
@@ -344,6 +346,13 @@ pub struct Esp32PlatformBuilder {
     core_feature_config: Config,
     wifi_sender: Sender<Ipv4Addr>,
     modem: esp_idf_hal::modem::Modem<'static>,
+    firmware: crate::Firmware,
+    /// The BOOT button, on-board hardware, which releases an adopted device, see adoption::watch_boot_button.
+    #[cfg(feature = "board-cyd")]
+    boot_button: esp_idf_hal::gpio::Gpio0<'static>,
+    /// What must be kept for the card to stay mounted, or why it could not be, see sd_card.rs.
+    #[cfg(feature = "sd-card")]
+    sd_card: Result<Box<dyn std::any::Any>, String>,
     #[cfg(feature = "display")]
     orientation: DisplayOrientation,
     #[cfg(feature = "rgb-led")]
@@ -431,6 +440,21 @@ impl Esp32PlatformBuilder {
         led_manager.set_status(&Status::Initializing(InitStatus::Starting))?;
 
         #[cfg(feature = "board-cyd")]
+        let boot_button = peripherals.pins.gpio0;
+        // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
+        #[cfg(all(feature = "board-cyd", feature = "sd-card"))]
+        let sd_card = crate::sd_card::mount(
+            peripherals.spi3,
+            peripherals.pins.gpio18,
+            peripherals.pins.gpio23,
+            peripherals.pins.gpio19,
+            peripherals.pins.gpio5,
+        )
+        .map_err(|error| {
+            log::warn!("No SD card: {error:#}");
+            format!("{error:#}")
+        });
+        #[cfg(feature = "board-cyd")]
         let (remainder, spi, dc, back_light) = {
             use esp_idf_hal::{
                 gpio::PinDriver,
@@ -444,6 +468,7 @@ impl Esp32PlatformBuilder {
                 gpio35: peripherals.pins.gpio35,
                 i2c0: peripherals.i2c0,
                 i2c1: peripherals.i2c1,
+                #[cfg(not(feature = "sd-card"))]
                 spi3: peripherals.spi3,
                 rmt: peripherals.rmt,
             };
@@ -655,6 +680,11 @@ impl Esp32PlatformBuilder {
             core_feature_config,
             wifi_sender,
             modem,
+            firmware: crate::Firmware { name: "unknown", version: "unknown" },
+            #[cfg(feature = "board-cyd")]
+            boot_button,
+            #[cfg(feature = "sd-card")]
+            sd_card,
             #[cfg(feature = "display")]
             orientation: DisplayOrientation::Rotate0,
 
@@ -685,6 +715,13 @@ impl Esp32PlatformBuilder {
         self.orientation = orientation;
 
         Ok(self)
+    }
+
+    /// The name and version of the board crate's firmware, e.g. env!("CARGO_PKG_NAME") and env!("CARGO_PKG_VERSION"),
+    /// which the API says, see api.rs.
+    pub fn with_firmware(mut self, name: &'static str, version: &'static str) -> Self {
+        self.firmware = crate::Firmware { name, version };
+        self
     }
 
     pub fn with_feature(mut self, feature: Box<dyn DynFeature>) -> anyhow::Result<Self> {
@@ -789,6 +826,8 @@ impl Esp32PlatformBuilder {
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
+                overlay: false,
+                generation: 0,
                 display,
             };
         }
@@ -857,6 +896,8 @@ impl Esp32PlatformBuilder {
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
+                overlay: false,
+                generation: 0,
                 display,
             };
         }
@@ -919,6 +960,8 @@ impl Esp32PlatformBuilder {
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
+                overlay: false,
+                generation: 0,
                 display,
             };
 
@@ -962,11 +1005,17 @@ impl Esp32PlatformBuilder {
         server_manager.init_captive_portal(&self.ap_mode)?;
 
         let config_manager = Arc::new(bare_config_manager);
+
+        #[cfg(esp_idf_esp_https_server_enable)]
+        let adoption = crate::adoption::Adoption::load(&self.nvs_partition, config_manager.clone())?;
+        #[cfg(all(esp_idf_esp_https_server_enable, feature = "board-cyd"))]
+        crate::adoption::watch_boot_button(adoption.clone(), self.boot_button)?;
         ConfigManager::create_pages(&config_manager, &mut server_manager)?;
 
         // This should be in the app
 
         let cloned_ap_mode = self.ap_mode.clone();
+        let firmware = self.firmware;
         server_manager.on("/", Method::Get, move |req| {
             // info!("Received request for / from {}", req.connection().remote_addr());
 
@@ -976,33 +1025,33 @@ impl Esp32PlatformBuilder {
                 req.into_response(302, Some("Found"), &[("Location", "/config")])?;
             } else {
                 let mut resp = req.into_ok_response()?;
+                let time = Local::now().format("%Y-%m-%d %H:%M:%S");
+                let board = crate::board_name();
+                let crate::Firmware { name, version } = firmware;
                 resp.write(
-                    r#"
+                    format!(
+                        r#"
                     <!DOCTYPE html>
                     <html lang="en">
                     <head>
                         <meta charset="utf-8" />
                         <meta name="viewport" content="width=device-width, initial-scale=1" />
-                        <title>ESP32 Home</title>
+                        <title>{name}</title>
                         <link rel="stylesheet" href="/main.css">
                     </head>
                     <body>
                         <div class="page">
-                            <h1>ESP32 Home</h1>
-                            <p>Welcome to the ESP32 home page!</p>
-                            <p>Current time: "#
-                        .as_bytes(),
-                )?;
-
-                let now = Local::now();
-                let time = now.format("%Y-%m-%d %H:%M:%S").to_string();
-                resp.write(time.as_bytes())?;
-                resp.write(
-                    r#"</p>
+                            <h1>{name}</h1>
+                            <section class="feature">
+                                <p>{name} {version} on a {board}</p>
+                                <p>The time is {time}</p>
+                            </section>
+                            <p><a href="/config">Settings</a></p>
                         </div>
                     </body>
                     </html>
                     "#
+                    )
                     .as_bytes(),
                 )?;
             }
@@ -1021,6 +1070,14 @@ impl Esp32PlatformBuilder {
                 features: self.features,
                 ap_mode: self.ap_mode,
                 core_config_valid: self.core_config_valid,
+                nvs_partition: self.nvs_partition.clone(),
+                firmware: self.firmware,
+                #[cfg(esp_idf_esp_https_server_enable)]
+                api_server: None,
+                #[cfg(esp_idf_esp_https_server_enable)]
+                adoption,
+                #[cfg(feature = "sd-card")]
+                sd_card: self.sd_card,
                 #[cfg(feature = "display")]
                 display_manager: Arc::new(Mutex::new(display_manager)),
                 #[cfg(feature = "i2c")]
@@ -1072,6 +1129,15 @@ pub struct Esp32Platform {
     features: Vec<FeatureHolder>,
     pub ap_mode: Arc<Mutex<bool>>,
     core_config_valid: bool,
+    nvs_partition: esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault>,
+    firmware: crate::Firmware,
+    /// The HTTPS API, see api.rs, for features to add to, None in AP mode or if it could not start.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub api_server: Option<crate::api::ApiServer>,
+    #[cfg(esp_idf_esp_https_server_enable)]
+    adoption: Arc<crate::adoption::Adoption>,
+    #[cfg(feature = "sd-card")]
+    sd_card: Result<Box<dyn std::any::Any>, String>,
 
     #[cfg(feature = "mipi-dsi-display")]
     pub display_manager: Arc<Mutex<mipi_dsi_display_manager::MipiDsiDisplayManager>>,
@@ -1088,6 +1154,14 @@ impl Platform for Esp32Platform {}
 impl Esp32Platform {
     pub fn builder() -> anyhow::Result<(Esp32PlatformBuilder, Remainder)> {
         Esp32PlatformBuilder::new()
+    }
+
+    /// Where the SD card is mounted, for std::fs, or why there is none, see sd_card.rs.
+    pub fn sd_card(&self) -> Result<&'static str, String> {
+        #[cfg(feature = "sd-card")]
+        return self.sd_card.as_ref().map(|_| crate::sd_card::MOUNT_POINT).map_err(Clone::clone);
+        #[cfg(not(feature = "sd-card"))]
+        Err("this firmware has no SD card support".to_string())
     }
 
     pub fn set_status(&mut self, status: Status) -> anyhow::Result<()> {
@@ -1151,6 +1225,30 @@ impl Esp32Platform {
 
         let datetime: chrono::DateTime<Local> = Local::now();
         info!("Time synced: {}", datetime.format("%Y-%m-%d %H:%M:%S"));
+
+        // Now the Wi-Fi is running, so that a new key is truly random, see identity.rs, and before the features
+        // start, so that they can add to it.
+        #[cfg(esp_idf_esp_https_server_enable)]
+        match crate::api::ApiServer::start(
+            &self.nvs_partition,
+            self.config_manager.clone(),
+            self.adoption.clone(),
+            self.firmware,
+        ) {
+            Ok(api_server) => {
+                #[cfg(feature = "mipi-dsi-display")]
+                initializer.add_task(
+                    Box::new(crate::adoption::AdoptionOverlay::new(
+                        &self.display_manager,
+                        self.adoption.clone(),
+                        &api_server.identity().fingerprint,
+                    )),
+                    "* * * * * *",
+                )?;
+                self.api_server = Some(api_server);
+            }
+            Err(error) => error!("Unable to start the API server: {error:#}"),
+        }
 
         let features = std::mem::take(&mut self.features);
         self.features = Vec::with_capacity(features.len() + 1);

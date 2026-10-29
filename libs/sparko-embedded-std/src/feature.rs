@@ -96,8 +96,10 @@ impl FeatureConfigHolder {
         info!("Creating config page for feature: {}", &self.name);
         let feature_name = &self.name;
         let inner = &self.inner.lock().unwrap();
+        // Each feature is a card, closed after its settings.
         if let EnabledState::Required = inner.enabled {
             // Required features are always enabled, so we just show the config page without a checkbox
+            resp.write(format!(r#"<section class="feature"><h2>{feature_name}</h2>"#).as_bytes())?;
         } else {
             info!(
                 "feature.enabled for {}: {}",
@@ -115,9 +117,11 @@ impl FeatureConfigHolder {
             resp.write(
                 format!(
                     r#"
-                        <label for="{name}">{name}</label>
-                        <input id="{name}" name="{name}" type="checkbox"{checked}>
+                        <section class="feature">
+                        <div class="feature_head">
                         <h2>{feature_name}</h2>
+                        <label class="checkbox"><input id="{name}" name="{name}" type="checkbox"{checked}> Enabled</label>
+                        </div>
             "#
                 )
                 .as_bytes(),
@@ -171,8 +175,7 @@ impl FeatureConfigHolder {
                     };
 
                     resp.write(format!(r#"
-                                <label for="{name}">{name}</label>
-                                <input id="{name}" name="{name}" type="checkbox" value="true" {checked}>
+                                <label class="checkbox"><input id="{name}" name="{name}" type="checkbox" value="true" {checked}> {name}</label>
                     "#).as_bytes())?;
                     continue;
                 }
@@ -240,7 +243,7 @@ impl FeatureConfigHolder {
                     let description = if let Some(cron) = opt_cron {
                         cron.describe()
                     } else {
-                        "None".to_string()
+                        "Not set".to_string()
                     };
 
                     resp.write(
@@ -249,7 +252,7 @@ impl FeatureConfigHolder {
                                 <!-- Cron field {name}-->
                                 <label for="{name}">{name}</label>
                                 <input id="{name}" name="{name}" type="text" value="{value}">
-                                <input type="text" value="{description}" disabled>
+                                <p class="note">{description}</p>
                     "#
                         )
                         .as_bytes(),
@@ -263,6 +266,7 @@ impl FeatureConfigHolder {
                         <input id="{name}" name="{name}" type="{input_type}" autocomplete="off" value="{value}">
             "#).as_bytes())?;
         }
+        resp.write(b"</section>")?;
 
         Ok(())
     }

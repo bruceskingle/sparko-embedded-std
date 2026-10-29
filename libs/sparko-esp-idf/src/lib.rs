@@ -10,6 +10,42 @@ use sparko_embedded_std::{
 mod esp32_platform;
 pub use esp32_platform::*;
 
+#[cfg(esp_idf_esp_https_server_enable)]
+pub mod api;
+#[cfg(feature = "sd-card")]
+pub mod sd_card;
+
+#[cfg(esp_idf_esp_https_server_enable)]
+pub mod adoption;
+#[cfg(esp_idf_esp_https_server_enable)]
+mod identity;
+
+/// The firmware a board crate builds, which the platform cannot know itself, see Esp32PlatformBuilder::with_firmware.
+#[derive(Clone, Copy)]
+pub struct Firmware {
+    pub name: &'static str,
+    pub version: &'static str,
+}
+
+/// The board this was built for, from its board- feature.
+pub fn board_name() -> &'static str {
+    if cfg!(feature = "board-cyd") {
+        "cyd"
+    } else if cfg!(feature = "board-devkitv1") {
+        "devkitv1"
+    } else if cfg!(feature = "board-supermini-esp32c3") {
+        "supermini-esp32c3"
+    } else if cfg!(feature = "board-wave-esp32c6147") {
+        "wave-esp32c6147"
+    } else if cfg!(feature = "board-wave-esp32c6touch147") {
+        "wave-esp32c6touch147"
+    } else if cfg!(feature = "board-xiao-esp32c6") {
+        "xiao-esp32c6"
+    } else {
+        "unknown"
+    }
+}
+
 mod commands;
 mod config_store;
 mod core;

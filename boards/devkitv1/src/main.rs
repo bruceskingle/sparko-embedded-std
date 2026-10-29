@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
     let platform = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
+        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         .build()?;
 
     platform.start()

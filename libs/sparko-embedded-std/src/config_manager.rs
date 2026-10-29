@@ -1,6 +1,9 @@
 use std::{
     io::Write,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use indexmap::IndexMap;
@@ -8,7 +11,7 @@ use log::info;
 
 use crate::{
     command::Commands,
-    config::{Config, ConfigStoreFactory},
+    config::{Config, ConfigStoreFactory, EnabledState},
     feature::{FeatureConfigHolder, FeatureDescriptor},
     http_server::{HttpMethod, HttpServerManager},
     problem::ProblemManager,
@@ -66,6 +69,7 @@ impl ConfigManagerBuilder {
 
     pub fn build(self) -> ConfigManager {
         ConfigManager {
+            managed: AtomicBool::new(false),
             features: self.features,
             problem_manager: self.problem_manager,
             ap_mode: self.ap_mode,
@@ -75,6 +79,10 @@ impl ConfigManagerBuilder {
 }
 
 pub struct ConfigManager {
+    /// Whether an app manages the device, after which the /config page only shows that, except in AP mode, when it
+    /// only offers the settings of the features which are always enabled, e.g. the Wi-Fi's, so that the device can
+    /// be put on a new network, but not repointed by a stranger, see set_managed.
+    managed: AtomicBool,
     pub features: IndexMap<String, FeatureConfigHolder>,
     problem_manager: Arc<ProblemManager>,
     ap_mode: Arc<Mutex<bool>>,
@@ -89,6 +97,22 @@ impl ConfigManager {
         commands: Box<dyn Commands>,
     ) -> anyhow::Result<ConfigManagerBuilder> {
         ConfigManagerBuilder::new(config_store_factory, problem_manager, ap_mode, commands)
+    }
+
+    pub fn set_managed(&self, managed: bool) {
+        self.managed.store(managed, Ordering::SeqCst);
+    }
+
+    pub fn is_managed(&self) -> bool {
+        self.managed.load(Ordering::SeqCst)
+    }
+
+    /// The features the /config page offers, see managed.
+    fn page_features(&self) -> impl Iterator<Item = &FeatureConfigHolder> {
+        let only_required = self.is_managed();
+        self.features.values().filter(move |feature| {
+            !only_required || matches!(feature.inner.lock().unwrap().enabled, EnabledState::Required)
+        })
     }
 
     pub fn erase_config(&self, feature_name: &str) -> anyhow::Result<()> {
@@ -126,7 +150,7 @@ impl ConfigManager {
                 <head>
                     <meta charset="utf-8" />
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
-                    <title>ESP32 Setup</title>
+                    <title>Settings</title>
                     <link rel="stylesheet" href="/main.css">
                 </head>
                 <body>
@@ -137,8 +161,8 @@ impl ConfigManager {
         if !config_manager_clone.problem_manager.is_empty() {
             info!("Failure reason present, showing error message on config page");
             resp.write(format!(r#"
-                    <div style="background: #ffdddd; border: 1px solid #ff5c5c; padding: 10px; margin-bottom: 18px; border-radius: 8px;">
-                        <strong>Error:</strong> <ul>
+                    <div class="problems">
+                        <strong>Problems</strong> <ul>
                 "#).as_bytes())?;
 
             for reason in &*config_manager_clone.problem_manager {
@@ -159,13 +183,29 @@ impl ConfigManager {
         } else {
             info!("No failure reason, not showing error message on config page");
         }
+        if config_manager_clone.is_managed() && config_manager_clone.is_online() {
+            resp.write(
+                r#"
+                        <h1>Settings</h1>
+                        <p>An app, such as Marco Sparko, manages this device and changes its settings.</p>
+                        <p>To manage it here again, release it in the app, or hold its BOOT button for 5 seconds.</p>
+                        <p><a href="/">Home</a></p>
+                    </div>
+                </body>
+                </html>
+                "#
+                .as_bytes(),
+            )?;
+            return Ok(());
+        }
         resp.write(
             r#"
-                        <h1>ESP32 Setup</h1>
+                        <h1>Settings</h1>
+                        <p><a href="/">Home</a></p>
                         <form method="POST" action="/update_config">"#
                 .as_bytes(),
         )?;
-        for (_feature_name, feature_config) in &config_manager_clone.features {
+        for feature_config in config_manager_clone.page_features() {
             feature_config.create_config_page(resp)?;
         }
 
@@ -198,6 +238,10 @@ impl ConfigManager {
         resp: &mut dyn Write,
         form: IndexMap<String, String>,
     ) -> anyhow::Result<()> {
+        // e.g. a factory reset, which would take the device off the Wi-Fi, see managed.
+        if self.is_managed() && self.is_online() {
+            anyhow::bail!("an app manages this device, so commands cannot be given here");
+        }
         self.commands.handle_command(resp, form, &self)
     }
 
@@ -236,7 +280,10 @@ impl ConfigManager {
     pub fn handle_config_form(&self, form: &IndexMap<String, String>) -> anyhow::Result<()> {
         // Only the names, as the values include secrets.
         info!("Handling config form submission: {:?}", form.keys().collect::<Vec<_>>());
-        for (_feature_name, feature_config) in &self.features {
+        if self.is_managed() && self.is_online() {
+            anyhow::bail!("an app manages this device, so its settings cannot be changed here");
+        }
+        for feature_config in self.page_features() {
             feature_config.handle_config_form(form)?;
         }
         Ok(())

@@ -49,6 +49,23 @@ pub trait DisplayManager {
 
     fn fill_color(&mut self, color: Color) -> anyhow::Result<()>;
 
+    /// Whether the platform has the whole screen for now, e.g. to show adoption's pairing code, during which
+    /// renderers, e.g. ClockRenderer, should draw nothing.
+    fn overlay_active(&self) -> bool {
+        false
+    }
+
+    /// Changes whenever the screen has been cleared, e.g. when an overlay ends, after which renderers should draw
+    /// everything again, not only what has changed.
+    fn generation(&self) -> u32 {
+        0
+    }
+
+    /// Starts or ends an overlay, see overlay_active. Ending it clears the screen and changes the generation.
+    fn set_overlay(&mut self, _active: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn map_color(&self, color: &Color) -> <Self::Display as DrawTarget>::Color;
 
     fn map_rgb8(&self, color: &RGB8) -> <Self::Display as DrawTarget>::Color;

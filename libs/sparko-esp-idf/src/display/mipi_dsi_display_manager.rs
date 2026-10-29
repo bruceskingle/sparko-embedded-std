@@ -141,6 +141,9 @@ impl mipidsi::interface::Interface for EspDi {
 
 pub struct MipiDsiDisplayManager {
     pub back_light: PinDriver<'static, Output>,
+    /// See DisplayManager::overlay_active and generation.
+    pub overlay: bool,
+    pub generation: u32,
     #[cfg(feature = "board-cyd")]
     pub display: mipidsi::Display<EspDi, mipidsi::models::ILI9341Rgb565, mipidsi::NoResetPin>,
     #[cfg(feature = "board-wave-esp32c6touch147")]
@@ -179,6 +182,23 @@ impl DisplayManager for MipiDsiDisplayManager {
 
     fn display(&mut self) -> &mut Self::Display {
         &mut self.display
+    }
+
+    fn overlay_active(&self) -> bool {
+        self.overlay
+    }
+
+    fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    fn set_overlay(&mut self, active: bool) -> anyhow::Result<()> {
+        if self.overlay && !active {
+            self.fill_color(Color::Black)?;
+            self.generation = self.generation.wrapping_add(1);
+        }
+        self.overlay = active;
+        Ok(())
     }
 
     fn fill_color(&mut self, color: Color) -> anyhow::Result<()> {

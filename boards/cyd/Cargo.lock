@@ -1728,6 +1728,7 @@ dependencies = [
  "indexmap",
  "log",
  "rgb",
+ "serde_json",
 ]
 
 [[package]]
@@ -1771,6 +1772,7 @@ dependencies = [
  "log",
  "mipidsi",
  "rgb",
+ "serde_json",
  "simple-dns",
  "sparko-embedded-std",
  "url",

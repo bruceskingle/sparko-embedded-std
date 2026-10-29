@@ -89,6 +89,7 @@ fn run() -> anyhow::Result<()> {
         .with_feature(Box::new(DynDns2::new()?))?
         // .with_feature(Box::new(BinaryClock::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
+        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

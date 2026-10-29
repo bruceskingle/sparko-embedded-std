@@ -18,6 +18,7 @@ heapless = "0.9.1"
 
 url = "2.5.8"
 indexmap = "2.13.0"
+serde_json = "1"
 chrono = "0.4.44"
 simple-dns = "0.11.2"
 croner = "3.0.1"
@@ -80,6 +81,7 @@ board-supermini-esp32c3 = ["mono-led", "smart-led-spi"]
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
 ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
+sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD), which are then not in the Remainder. Board must have one (board-cyd).
 tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 

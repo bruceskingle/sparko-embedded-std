@@ -28,6 +28,8 @@ where
 {
     display_manager: Arc<Mutex<DM>>,
     inner: InnerRenderer<DM>,
+    /// The display manager's generation when the clock was last drawn in full, see DisplayManager::generation.
+    generation: u32,
 }
 
 impl<DM> ClockRenderer<DM>
@@ -57,9 +59,11 @@ where
 
         let inner = InnerRenderer::new(clock_color, bg_color, bounding_box)?;
 
+        let generation = display_manager.lock().unwrap().generation();
         let mut clock_renderer = Self {
             display_manager: display_manager.clone(),
             inner,
+            generation,
         };
 
         clock_renderer.draw()?;
@@ -74,10 +78,19 @@ where
         self.inner.draw(target)
     }
 
+    /// Draws the hands which have moved, or the whole clock if the screen has been cleared since it was last drawn,
+    /// and nothing while there is an overlay, see DisplayManager::overlay_active.
     pub fn update(&mut self) -> anyhow::Result<()> {
         let mut manager = self.display_manager.lock().unwrap();
+        if manager.overlay_active() {
+            return Ok(());
+        }
+        let generation = manager.generation();
         let target = manager.display();
-
+        if generation != self.generation {
+            self.generation = generation;
+            self.inner.draw(target)?;
+        }
         self.inner.update(target)
     }
 }
@@ -275,8 +288,9 @@ where
     //         .draw(manager.display()).anyhow()
     // }
 
+    /// Clears the clock's square, not the whole screen, which may have other things on it.
     fn clear(&mut self, target: &mut <DM as DisplayManager>::Display) -> anyhow::Result<()> {
-        target
+        self.clock_face
             .bounding_box()
             .into_styled(PrimitiveStyle::with_fill(self.bg_color))
             .draw(target)

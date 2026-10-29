@@ -71,7 +71,11 @@ fn is_online(ap_mode: &Arc<std::sync::Mutex<bool>>) -> bool {
 
 impl EspHttpServerManager<'_> {
     pub fn new() -> anyhow::Result<Self> {
-        let server = EspHttpServer::new(&Default::default())?;
+        // 6 KB is enough without TLS, but the default is 10 KB when HTTPS is enabled, for the API, see api.rs.
+        let server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
+            stack_size: 6144,
+            ..Default::default()
+        })?;
         Ok(Self { server })
     }
 

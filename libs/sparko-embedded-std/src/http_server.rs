@@ -66,41 +66,45 @@ pub trait HttpServerManager {
             &[("Content-Type", "text/css")],
             Box::new(|resp| {
             resp.write(r#"
-body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background: #f7f7f7; }
-.page { max-width: 480px; margin: 0 auto; padding: 18px; }
-h1 { font-size: 1.5rem; margin-bottom: 1rem; }
-label { display: block; margin: 12px 0 6px; font-weight: 600; }
-input, select { width: 100%; padding: 10px 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-button { margin-top: 18px; width: 100%; padding: 12px; font-size: 1rem; border-radius: 10px; border: none; background: #007aff; color: #fff; }
-button:active { background: #005bb5; }
-
-.form_row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Dark, as the Marco Sparko app is, and for a phone first: one column, fields the width of the screen. */
+:root {
+  color-scheme: dark;
+  --bg: #0f1116;
+  --panel: #171a21;
+  --border: #2e333d;
+  --text: #e8eaed;
+  --muted: #9aa6b2;
+  --accent: #06b6d4;
+  --problem: #e06c6c;
 }
-
-.form_row input[type="text"],
-.form_row input[type="password"] {
-  flex: 1;
-  width: auto;
-}
-
-.form_row button {
-  width: auto;
-  margin-top: 0;
-  padding: 10px 12px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.form_row input[type="color"] {
-  width: 36px;
-  height: 36px;
-  padding: 2px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.4; }
+.page { max-width: 560px; margin: 0 auto; padding: 16px; overflow-wrap: anywhere; }
+h1 { font-size: 1.4rem; margin: 4px 0 16px; }
+h2 { font-size: 1.1rem; margin: 0; color: var(--accent); }
+p { color: var(--muted); }
+a { color: var(--accent); }
+.feature { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 0 0 16px; }
+.feature_head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+label { display: block; margin: 14px 0 4px; font-size: 0.85rem; color: var(--muted); }
+/* 16px, so that a phone does not zoom in to the field. */
+input, select { display: block; width: 100%; min-width: 0; padding: 10px; font-size: 16px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+input::placeholder { color: var(--muted); }
+.checkbox { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; font-size: 1rem; color: var(--text); }
+.feature_head .checkbox { margin: 0; font-size: 0.9rem; color: var(--muted); }
+input[type="checkbox"] { display: inline-block; width: 20px; height: 20px; margin: 0; padding: 0; accent-color: var(--accent); flex: 0 0 auto; }
+button { display: block; width: 100%; margin: 16px 0 0; padding: 12px; font-size: 1rem; color: var(--accent); background: #2a2a2f; border: 1px solid #404045; border-radius: 6px; cursor: pointer; }
+button:hover, button:active { border-color: var(--accent); }
+.note { margin: 4px 0 0; font-size: 0.85rem; }
+.problems { margin: 0 0 16px; padding: 10px 14px; color: #ffd7d7; background: #3a1d1d; border: 1px solid var(--problem); border-radius: 8px; }
+.problems ul { margin: 6px 0 0; padding-left: 20px; }
+/* A field with a button or picker beside it, which wraps onto two lines if the screen is too narrow. */
+.form_row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.form_row input[type="text"], .form_row input[type="password"] { flex: 1 1 10em; width: auto; }
+.form_row button { flex: 0 0 auto; width: auto; margin: 0; padding: 10px 12px; white-space: nowrap; }
+.form_row input[type="color"] { flex: 0 0 auto; width: 44px; height: 42px; padding: 2px; cursor: pointer; }
                         "#.as_bytes())?;
             Ok(())
         }))?;

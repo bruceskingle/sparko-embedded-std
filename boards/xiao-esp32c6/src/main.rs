@@ -15,6 +15,7 @@ fn main() -> anyhow::Result<()> {
     let mut sparko_esp32 = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
+        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

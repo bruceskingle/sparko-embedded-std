@@ -230,6 +230,8 @@ pub struct Remainder {
     // pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
     // pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
     // pub gpio3: esp_idf_hal::gpio::Gpio3<'static>,
+    /// Not with the sd-card feature, which uses it for the SD card's chip select.
+    #[cfg(not(feature = "sd-card"))]
     pub gpio4: esp_idf_hal::gpio::Gpio4<'static>,
     pub gpio5: esp_idf_hal::gpio::Gpio5<'static>,
     pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
@@ -363,7 +365,7 @@ pub struct Esp32PlatformBuilder {
     pub led_manager: SimpleLedManager<'static>,
 
     #[cfg(feature = "mipi-dsi-display")]
-    spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
+    spi: crate::DisplaySpi,
     #[cfg(feature = "mipi-dsi-display")]
     dc: PinDriver<'static, Output>,
     #[cfg(feature = "mipi-dsi-display")]
@@ -474,15 +476,14 @@ impl Esp32PlatformBuilder {
                 rmt: peripherals.rmt,
             };
 
-            let spi = SpiDeviceDriver::new_single(
+            let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
                 peripherals.spi2,              //SPI
                 peripherals.pins.gpio14,       //SCLK
-                peripherals.pins.gpio13,       //SDO / MISO
-                Some(peripherals.pins.gpio12), //SDI / MOSI
-                Some(peripherals.pins.gpio15), //CS / SS
+                peripherals.pins.gpio13,       //SDO / MOSI
+                Some(peripherals.pins.gpio12), //SDI / MISO
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
-                &SpiConfig::new().baudrate(Hertz(20_000_000)),
-            )?;
+            )?));
+            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio15), &SpiConfig::new().baudrate(Hertz(20_000_000)))?;
 
             // GPIO
             let dc = PinDriver::output(peripherals.pins.gpio2)?;
@@ -523,15 +524,14 @@ impl Esp32PlatformBuilder {
 
             let back_light = PinDriver::output(peripherals.pins.gpio22)?;
 
-            let spi = SpiDeviceDriver::new_single(
+            let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
                 peripherals.spi2,
                 peripherals.pins.gpio7,                 // SCLK
                 peripherals.pins.gpio6,                 // MOSI
                 None::<esp_idf_hal::gpio::AnyInputPin>, // MISO not used
-                Some(peripherals.pins.gpio14),          // CS
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
-                &SpiConfig::new().baudrate(Hertz(40_000_000)),
-            )?;
+            )?));
+            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio14), &SpiConfig::new().baudrate(Hertz(40_000_000)))?;
 
             // Control pins
             let dc = PinDriver::output(peripherals.pins.gpio15)?;
@@ -540,6 +540,8 @@ impl Esp32PlatformBuilder {
             (remainder, spi, dc, back_light, reset)
         };
 
+        #[cfg(all(feature = "board-wave-esp32c6touch147", feature = "sd-card"))]
+        let sd_card;
         #[cfg(feature = "board-wave-esp32c6touch147")]
         let (remainder, spi, dc, back_light, reset, i2c, touch_driver_factory) = {
             use esp_idf_hal::{
@@ -550,6 +552,7 @@ impl Esp32PlatformBuilder {
             };
 
             let remainder = Remainder {
+                #[cfg(not(feature = "sd-card"))]
                 gpio4: peripherals.pins.gpio4,
                 gpio5: peripherals.pins.gpio5,
                 gpio6: peripherals.pins.gpio6,
@@ -564,15 +567,24 @@ impl Esp32PlatformBuilder {
 
             let back_light = PinDriver::output(peripherals.pins.gpio23)?;
 
-            let spi = SpiDeviceDriver::new_single(
+            // Shared by the display and the SD card slot.
+            let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
                 peripherals.spi2,
                 peripherals.pins.gpio1,        // SCLK
                 peripherals.pins.gpio2,        // MOSI
-                Some(peripherals.pins.gpio3),  // MISO
-                Some(peripherals.pins.gpio14), // CS
+                Some(peripherals.pins.gpio3),  // MISO, the SD card's
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
-                &SpiConfig::new().baudrate(Hertz(40_000_000)),
-            )?;
+            )?));
+            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio14), &SpiConfig::new().baudrate(Hertz(40_000_000)))?;
+            // After the display's device, which holds its chip select high, so that the display ignores the card's
+            // start up, see sd_card.rs.
+            #[cfg(feature = "sd-card")]
+            {
+                sd_card = crate::sd_card::mount_shared(bus, peripherals.pins.gpio4).map_err(|error| {
+                    log::warn!("No SD card: {error:#}");
+                    format!("{error:#}")
+                });
+            }
 
             // Control pins
             let dc = PinDriver::output(peripherals.pins.gpio15)?;
@@ -1073,6 +1085,7 @@ impl Esp32PlatformBuilder {
                 core_config_valid: self.core_config_valid,
                 nvs_partition: self.nvs_partition.clone(),
                 firmware: self.firmware,
+                ip_address: None,
                 #[cfg(esp_idf_esp_https_server_enable)]
                 api_server: None,
                 #[cfg(esp_idf_esp_https_server_enable)]
@@ -1132,6 +1145,8 @@ pub struct Esp32Platform {
     core_config_valid: bool,
     nvs_partition: esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault>,
     firmware: crate::Firmware,
+    /// The device's address on the Wi-Fi, once it has one, see ip_address.
+    ip_address: Option<Ipv4Addr>,
     /// The HTTPS API, see api.rs, for features to add to, None in AP mode or if it could not start.
     #[cfg(esp_idf_esp_https_server_enable)]
     pub api_server: Option<crate::api::ApiServer>,
@@ -1177,6 +1192,18 @@ impl Esp32Platform {
     /// The device's name on the network, e.g. cyd, from its mDNS hostname setting, if it has one.
     pub fn hostname(&self) -> Option<String> {
         self.config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname")
+    }
+
+    /// The device's address on the Wi-Fi, None until it has one, e.g. in AP mode, so that a device which has not been
+    /// set up yet can show where to find it.
+    pub fn ip_address(&self) -> Option<Ipv4Addr> {
+        self.ip_address
+    }
+
+    /// Whether the device has been adopted by an app, see adoption.rs.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn is_adopted(&self) -> bool {
+        self.adoption.is_adopted()
     }
 
     /// Where the SD card is mounted, for std::fs, or why there is none, see sd_card.rs.
@@ -1231,6 +1258,7 @@ impl Esp32Platform {
 
         self.set_status(Status::Initializing(InitStatus::AwaitingTimeSync))?;
         info!("Wifi started: ip_address={}", &ip_address);
+        self.ip_address = Some(ip_address);
 
         let sntp = EspSntp::new_default()?;
 

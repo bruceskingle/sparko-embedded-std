@@ -46,3 +46,27 @@ pub fn mount(
     info!("SD card mounted at {MOUNT_POINT}");
     Ok(Box::new(mounted))
 }
+
+/// Mounts the card of a board whose slot shares the display's SPI bus, bus, with its chip select, cs, returning what
+/// must be kept for as long as it is mounted. The display's device must be on the bus first, so that its chip select is
+/// held high while the card starts.
+#[cfg(feature = "board-wave-esp32c6touch147")]
+pub fn mount_shared(
+    bus: &'static SpiDriver<'static>,
+    cs: esp_idf_hal::gpio::Gpio4<'static>,
+) -> anyhow::Result<Box<dyn Any>> {
+    // As on the CYD, see mount, the card's lines need pull-ups: MISO and its chip select, the others being the
+    // display's too.
+    for pin in [3, 4] {
+        unsafe { esp_idf_sys::gpio_set_pull_mode(pin, esp_idf_sys::gpio_pull_mode_t_GPIO_PULLUP_ONLY) };
+    }
+    let mut config = SdCardConfiguration::new();
+    config.speed_khz = SPEED_KHZ;
+    let card = SdCardDriver::new_spi(
+        SdSpiHostDriver::new(bus, Some(cs), AnyIOPin::none(), AnyIOPin::none(), AnyIOPin::none(), None)?,
+        &config,
+    )?;
+    let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
+    info!("SD card mounted at {MOUNT_POINT}");
+    Ok(Box::new(mounted))
+}

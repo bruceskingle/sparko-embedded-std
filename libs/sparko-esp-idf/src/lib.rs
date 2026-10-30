@@ -23,6 +23,11 @@ mod identity;
 mod memory;
 mod starts;
 
+/// The display's SPI device, on a bus which lives as long as the device, so that other devices can share it, e.g. the
+/// SD card slot of the Waveshare ESP32-C6-Touch-LCD-1.47, see sd_card.rs.
+#[cfg(feature = "mipi-dsi-display")]
+pub type DisplaySpi = esp_idf_hal::spi::SpiDeviceDriver<'static, &'static esp_idf_hal::spi::SpiDriver<'static>>;
+
 /// The firmware a board crate builds, which the platform cannot know itself, see Esp32PlatformBuilder::with_firmware.
 #[derive(Clone, Copy)]
 pub struct Firmware {
@@ -44,6 +49,12 @@ pub fn reset_reason() -> &'static str {
         esp_idf_sys::esp_reset_reason_t_ESP_RST_DEEPSLEEP => "DeepSleep",
         esp_idf_sys::esp_reset_reason_t_ESP_RST_BROWNOUT => "Brownout",
         esp_idf_sys::esp_reset_reason_t_ESP_RST_SDIO => "Sdio",
+        // Of newer chips, e.g. the ESP32-C6, which is reset over its own USB when it is flashed.
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_USB => "Usb",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_JTAG => "Jtag",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_EFUSE => "Efuse",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_PWR_GLITCH => "PowerGlitch",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_CPU_LOCKUP => "CpuLockup",
         _ => "Unknown",
     }
 }

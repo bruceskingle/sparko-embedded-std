@@ -10,7 +10,7 @@ use crate::display::mipi_dsi_display_manager;
 use crate::{rgb565_from_rgb8, to_rgb565};
 
 pub struct EspDi {
-    pub spi: SpiDeviceDriver<'static, esp_idf_hal::spi::SpiDriver<'static>>,
+    pub spi: crate::DisplaySpi,
     pub dc: PinDriver<'static, Output>,
     pub xoffset: i16,
     pub yoffset: i16,

@@ -25,6 +25,9 @@ use std::sync::mpsc::Sender;
 use crate::core::PASSWORD_LEN;
 use crate::core::SSID_LEN;
 
+/// The name of the Wi-Fi network the device makes when it has not been set up, see start_access_point.
+pub const ACCESS_POINT_SSID: &str = "ESP32-Setup";
+
 pub struct WiFiManager<'a> {
     wifi: EspWifi<'a>,
     sys_loop: EspSystemEventLoop,
@@ -56,7 +59,7 @@ impl WiFiManager<'_> {
 
     pub fn start_access_point(&mut self) -> anyhow::Result<std::net::Ipv4Addr> {
         let ap_config = AccessPointConfiguration {
-            ssid: heapless::String::<SSID_LEN>::try_from("ESP32-Setup").unwrap(),
+            ssid: heapless::String::<SSID_LEN>::try_from(ACCESS_POINT_SSID).unwrap(),
             password: heapless::String::<PASSWORD_LEN>::try_from("password").unwrap(),
             channel: 1,
             auth_method: AuthMethod::WPA2Personal,

@@ -194,10 +194,15 @@ impl DisplayManager for MipiDsiDisplayManager {
 
     fn set_overlay(&mut self, active: bool) -> anyhow::Result<()> {
         if self.overlay && !active {
-            self.fill_color(Color::Black)?;
-            self.generation = self.generation.wrapping_add(1);
+            self.clear()?;
         }
         self.overlay = active;
+        Ok(())
+    }
+
+    fn clear(&mut self) -> anyhow::Result<()> {
+        self.fill_color(Color::Black)?;
+        self.generation = self.generation.wrapping_add(1);
         Ok(())
     }
 

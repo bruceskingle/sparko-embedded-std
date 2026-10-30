@@ -1215,12 +1215,31 @@ impl Esp32Platform {
     }
 
     pub fn set_status(&mut self, status: Status) -> anyhow::Result<()> {
+        self.show_status(status, &[])
+    }
+
+    /// Sets the status, which a display also shows the details of, e.g. the device's address, see
+    /// DisplayManager::show_status.
+    #[allow(unused_variables)]
+    fn show_status(&mut self, status: Status, details: &[String]) -> anyhow::Result<()> {
         #[cfg(feature = "led")]
         self.led_manager.set_status(&status)?;
         #[cfg(feature = "display")]
-        self.display_manager.lock().unwrap().set_status(&status)?;
+        self.display_manager.lock().unwrap().show_status(&status, details)?;
 
         Ok(())
+    }
+
+    /// Where to find the device, for its status, e.g. "Address 192.168.4.46", and its name, if it has them.
+    fn whereabouts(&self) -> Vec<String> {
+        let mut lines = Vec::new();
+        if let Some(address) = self.ip_address {
+            lines.push(format!("Address {address}"));
+        }
+        if let Some(name) = self.hostname().filter(|name| !name.is_empty()) {
+            lines.push(format!("Name {name}"));
+        }
+        lines
     }
 
     fn start_feature(
@@ -1251,14 +1270,15 @@ impl Esp32Platform {
     ) -> anyhow::Result<()> {
         // start wifi
 
-        self.set_status(Status::Initializing(InitStatus::AwaitingClientIpAddress))?;
+        let ssid = self.config_manager.value(crate::core::CORE_FEATURE_NAME, "ssid").unwrap_or_default();
+        self.show_status(Status::Initializing(InitStatus::AwaitingClientIpAddress), &[format!("Network {ssid}")])?;
         let ip_address = self
             .wifi_manager
             .start_client(&core_feature_holder.config)?;
 
-        self.set_status(Status::Initializing(InitStatus::AwaitingTimeSync))?;
         info!("Wifi started: ip_address={}", &ip_address);
         self.ip_address = Some(ip_address);
+        self.show_status(Status::Initializing(InitStatus::AwaitingTimeSync), &self.whereabouts())?;
 
         let sntp = EspSntp::new_default()?;
 
@@ -1272,7 +1292,7 @@ impl Esp32Platform {
             std::thread::sleep(std::time::Duration::from_millis(500));
         }
 
-        self.set_status(Status::Initializing(InitStatus::StartingFeatures))?;
+        self.show_status(Status::Initializing(InitStatus::StartingFeatures), &self.whereabouts())?;
 
         let datetime: chrono::DateTime<Local> = Local::now();
         info!("Time synced: {}", datetime.format("%Y-%m-%d %H:%M:%S"));
@@ -1338,12 +1358,15 @@ impl Esp32Platform {
         core_feature_holder: FeatureHolder,
     ) -> anyhow::Result<()> {
         log::info!("sparko_cyd: top of run");
+        // Why the device is being set up, if it was, as the details of the setup status.
+        let mut why = Vec::new();
         if self.core_config_valid {
             log::info!("Loaded config");
 
             if let Err(error) = self.start_client(initializer, core_feature_holder) {
                 log::error!("Error starting client: {}", error);
-                self.set_status(Status::Error)?;
+                why.push(format!("{error:#}"));
+                self.show_status(Status::Error, &why)?;
             } else {
                 log::info!("Client mode started successfully");
                 return Ok(());
@@ -1356,6 +1379,12 @@ impl Esp32Platform {
         *self.ap_mode.lock().unwrap() = true;
 
         let server_addr = self.wifi_manager.start_access_point()?;
+        let mut details = vec![
+            format!("Join the Wi-Fi {}", crate::wifi::ACCESS_POINT_SSID),
+            format!("then open http://{server_addr}"),
+        ];
+        details.extend(why);
+        self.show_status(Status::Setup, &details)?;
 
         thread::spawn(move || Self::captive_dns_server(server_addr));
 

@@ -20,18 +20,21 @@ use crate::Esp32PlatformInitializer;
 use crate::{Feature, FeatureDescriptor};
 
 #[derive(FeatureConfig)]
+#[config(label = "Dynamic DNS")]
 pub struct DynDns2Config {
-    #[config(len = 32)]
+    #[config(len = 32, label = "DynDNS User Name")]
     user_name: String,
-    #[config(len = 32, secret)]
+    #[config(len = 32, secret, label = "DynDNS Password")]
     password: String,
-    #[config(len = 64)]
+    #[config(len = 64, label = "Hostname to Update")]
     hostname: String,
-    #[config(len = 64)]
+    #[config(len = 64, label = "Public IP Address Lookup URL")]
     get_ip_url: String,
-    #[config(len = 64)]
+    #[config(len = 64, label = "DynDNS Update URL")]
     update_url: String,
+    #[config(label = "Send the IP Address with Updates")]
     upd_req_address: bool,
+    #[config(label = "Update Schedule (cron, seconds first)")]
     schedule: Cron,
 }
 

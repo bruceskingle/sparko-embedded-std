@@ -78,6 +78,8 @@ pub trait HttpServerManager {
   --problem: #e06c6c;
 }
 *, *::before, *::after { box-sizing: border-box; }
+/* The hidden attribute, e.g. of Clear Password's tick box, beats the display of the rules below. */
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.4; }
 .page { max-width: 560px; margin: 0 auto; padding: 16px; overflow-wrap: anywhere; }

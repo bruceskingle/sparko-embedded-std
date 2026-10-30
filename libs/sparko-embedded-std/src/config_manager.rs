@@ -99,6 +99,14 @@ impl ConfigManager {
         ConfigManagerBuilder::new(config_store_factory, problem_manager, ap_mode, commands)
     }
 
+    /// The value of a feature's setting, as text, None if it has none, or is a secret.
+    pub fn value(&self, feature_name: &str, name: &str) -> Option<String> {
+        let feature = self.features.get(feature_name)?;
+        let config = feature.inner.lock().unwrap();
+        let setting = config.spec.map.get(name)?;
+        (!setting.secret && !setting.value.is_none()).then(|| setting.value.to_string())
+    }
+
     pub fn set_managed(&self, managed: bool) {
         self.managed.store(managed, Ordering::SeqCst);
     }

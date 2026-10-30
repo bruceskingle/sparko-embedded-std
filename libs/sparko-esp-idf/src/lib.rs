@@ -19,12 +19,33 @@ pub mod sd_card;
 pub mod adoption;
 #[cfg(esp_idf_esp_https_server_enable)]
 mod identity;
+#[cfg(esp_idf_esp_https_server_enable)]
+mod memory;
+mod starts;
 
 /// The firmware a board crate builds, which the platform cannot know itself, see Esp32PlatformBuilder::with_firmware.
 #[derive(Clone, Copy)]
 pub struct Firmware {
     pub name: &'static str,
     pub version: &'static str,
+}
+
+/// Why the device last started, e.g. Panic, or Brownout, which shows power dips, as /api/info says, see api.rs.
+pub fn reset_reason() -> &'static str {
+    #[allow(non_upper_case_globals)]
+    match unsafe { esp_idf_sys::esp_reset_reason() } {
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_POWERON => "PowerOn",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_EXT => "ExternalPin",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_SW => "Software",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_PANIC => "Panic",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_INT_WDT => "InterruptWatchdog",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_TASK_WDT => "TaskWatchdog",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_WDT => "OtherWatchdog",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_DEEPSLEEP => "DeepSleep",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_BROWNOUT => "Brownout",
+        esp_idf_sys::esp_reset_reason_t_ESP_RST_SDIO => "Sdio",
+        _ => "Unknown",
+    }
 }
 
 /// The board this was built for, from its board- feature.

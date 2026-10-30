@@ -16,10 +16,10 @@ use log::info;
 pub const MOUNT_POINT: &str = "/sd";
 /// How many files may be open at once.
 const MAX_OPEN_FILES: usize = 4;
-/// The SPI clock, far slower than ESP-IDF's 20 MHz default, at which, and at 4 MHz, an old card in the CYD failed to
-/// read and write, and plenty for files of records. 400 kHz is the speed every card must support while it starts.
-/// TODO: find the fastest which works.
-const SPEED_KHZ: u32 = 400;
+/// The SPI clock once the card has started, which is always at 400 kHz, half ESP-IDF's 20 MHz default. An old card in
+/// the CYD failed to read and write even at 4 MHz, so 400 kHz was used, which made reading a day's records take
+/// minutes. A good card is fine at this.
+const SPEED_KHZ: u32 = 10_000;
 
 /// Mounts the card, returning what must be kept for as long as it is mounted.
 #[cfg(feature = "board-cyd")]

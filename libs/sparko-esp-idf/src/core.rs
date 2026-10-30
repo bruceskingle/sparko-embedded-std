@@ -23,12 +23,15 @@ pub const SSID_LEN: usize = 32;
 pub const PASSWORD_LEN: usize = 64;
 
 #[derive(FeatureConfig)]
+#[config(label = "Network and Time")]
 pub struct CoreConfig {
+    #[config(label = "WiFi Network Name")]
     pub ssid: heapless::String<SSID_LEN>,
-    #[config(secret)]
+    #[config(secret, label = "WiFi Password")]
     pub wifi_password: heapless::String<PASSWORD_LEN>,
-    #[config(len = 32)]
+    #[config(len = 32, label = "Device Name on the Network")]
     pub mdns_hostname: String,
+    #[config(label = "Time Zone")]
     pub time_zone: TimeZone,
 }
 

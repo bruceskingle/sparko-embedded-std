@@ -38,6 +38,9 @@ fn setting_json(name: &str, setting: &ConfigSpecValue) -> Value {
     json.insert("name".to_string(), json!(name));
     json.insert("type".to_string(), json!(type_name(&setting.value)));
     json.insert("required".to_string(), json!(setting.required));
+    if let Some(label) = setting.label {
+        json.insert("label".to_string(), json!(label));
+    }
     if let TypedValue::String(len, _) = setting.value {
         json.insert("maxLength".to_string(), json!(len));
     }
@@ -88,7 +91,7 @@ impl ConfigManager {
                 };
                 let settings: Vec<Value> =
                     config.spec.map.iter().map(|(name, setting)| setting_json(name, setting)).collect();
-                json!({ "name": feature.name, "enabled": enabled, "settings": settings })
+                json!({ "name": feature.name, "label": config.spec.label, "enabled": enabled, "settings": settings })
             })
             .collect();
         json!({ "features": features })

@@ -27,6 +27,7 @@ pub struct BinaryDigitConfig {
 }
 
 #[derive(FeatureConfig)]
+#[config(label = "Binary Clock")]
 pub struct BinaryClockConfig {}
 
 pub struct BinaryClockLayout {

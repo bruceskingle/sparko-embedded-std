@@ -65,10 +65,11 @@ impl Commands for EspCommands {
                     info!("Restart command received, restarting...");
                     message_page(resp, "Restarting", "The device is restarting, this page goes to its home page in 5 seconds.")?;
 
-                    std::thread::spawn(|| {
+                    // A small stack, as the default may not fit in the RAM which is left.
+                    std::thread::Builder::new().stack_size(4096).spawn(|| {
                         std::thread::sleep(std::time::Duration::from_secs(2));
                         unsafe { esp_idf_sys::esp_restart(); }
-                    });
+                    })?;
                 },
                 Some("factory_reset") => {
                     info!("Factory reset command received, erasing config and restarting...");
@@ -79,10 +80,11 @@ impl Commands for EspCommands {
                     else {
                         message_page(resp, "Factory reset", "The settings have been erased and the device is restarting, with its own Wi-Fi network for setting it up again.")?;
                     
-                        std::thread::spawn(|| {
+                        // A small stack, as the default may not fit in the RAM which is left.
+                        std::thread::Builder::new().stack_size(4096).spawn(|| {
                             std::thread::sleep(std::time::Duration::from_secs(2));
                             unsafe { esp_idf_sys::esp_restart(); }
-                        });
+                        })?;
                     }
                 },
                 Some(cmd) => {

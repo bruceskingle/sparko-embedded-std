@@ -94,8 +94,9 @@ impl FeatureConfigHolder {
         resp: &mut dyn std::io::Write, //&mut esp_idf_svc::http::server::Response<&mut EspHttpConnection<'_>>
     ) -> anyhow::Result<()> {
         info!("Creating config page for feature: {}", &self.name);
-        let feature_name = &self.name;
         let inner = &self.inner.lock().unwrap();
+        // What it is shown as, its name if it has no label.
+        let feature_name = inner.spec.label.unwrap_or(&self.name);
         // Each feature is a card, closed after its settings.
         if let EnabledState::Required = inner.enabled {
             // Required features are always enabled, so we just show the config page without a checkbox
@@ -129,6 +130,8 @@ impl FeatureConfigHolder {
         }
 
         for (name, config_value) in &inner.spec.map {
+            // What the field is shown as, its name if it has no label.
+            let label = config_value.label.unwrap_or(name);
             if config_value.secret {
                 // Never sent to the browser: an empty field keeps the saved value, see handle_config_form.
                 let is_set = !config_value.value.is_none();
@@ -142,7 +145,7 @@ impl FeatureConfigHolder {
                     // handle_config_form, and says so in the field. Typing a new value unticks it.
                     resp.write(format!(r#"
                         <!-- Secret field {name}-->
-                        <label for="{name}">{name}</label>
+                        <label for="{name}">{label}</label>
                         <div class="form_row">
                         <input id="{name}" name="{name}" type="password"{maxlength} autocomplete="new-password" placeholder="{placeholder}" value=""
                             oninput="document.getElementById('clear_{name}').checked = false">
@@ -153,7 +156,7 @@ impl FeatureConfigHolder {
                 } else {
                     resp.write(format!(r#"
                         <!-- Secret field {name}-->
-                        <label for="{name}">{name}</label>
+                        <label for="{name}">{label}</label>
                         <input id="{name}" name="{name}" type="password"{maxlength} autocomplete="new-password" placeholder="{placeholder}" value="">
             "#).as_bytes())?;
                 }
@@ -175,7 +178,7 @@ impl FeatureConfigHolder {
                     };
 
                     resp.write(format!(r#"
-                                <label class="checkbox"><input id="{name}" name="{name}" type="checkbox" value="true" {checked}> {name}</label>
+                                <label class="checkbox"><input id="{name}" name="{name}" type="checkbox" value="true" {checked}> {label}</label>
                     "#).as_bytes())?;
                     continue;
                 }
@@ -186,7 +189,7 @@ impl FeatureConfigHolder {
                         format!(
                             r#"
                                 <!-- Timezone field {name}-->
-                                <label for="{name}">{name}</label>
+                                <label for="{name}">{label}</label>
                                 <select id="{name}" name="{name}">"#
                         )
                         .as_bytes(),
@@ -223,7 +226,7 @@ impl FeatureConfigHolder {
                         format!(
                             r#"
                                 <!-- Color field {name}-->
-                                <label for="{name}">{name}</label>
+                                <label for="{name}">{label}</label>
                                 <div class="form_row">
                                 <input id="{name}" name="{name}" type="text" value="{value}">
                                 <input id="{name}_picker" type="color" value="{value}">
@@ -250,7 +253,7 @@ impl FeatureConfigHolder {
                         format!(
                             r#"
                                 <!-- Cron field {name}-->
-                                <label for="{name}">{name}</label>
+                                <label for="{name}">{label}</label>
                                 <input id="{name}" name="{name}" type="text" value="{value}">
                                 <p class="note">{description}</p>
                     "#
@@ -262,7 +265,7 @@ impl FeatureConfigHolder {
             };
             resp.write(format!(r#"
                         <!-- Other field {name}-->
-                        <label for="{name}">{name}</label>
+                        <label for="{name}">{label}</label>
                         <input id="{name}" name="{name}" type="{input_type}" autocomplete="off" value="{value}">
             "#).as_bytes())?;
         }

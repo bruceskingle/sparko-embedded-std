@@ -387,6 +387,7 @@ impl Esp32PlatformBuilder {
 
         let nvs_partition: esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault> =
             EspDefaultNvsPartition::take()?;
+        crate::starts::count(&nvs_partition);
         // let failure_reason: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
         let problem_manager = ProblemManager::new();
         let ap_mode = Arc::new(Mutex::new(false));
@@ -1156,6 +1157,28 @@ impl Esp32Platform {
         Esp32PlatformBuilder::new()
     }
 
+    /// Adds a handler for reading to the API, see ApiServer::get, if it is running, so also over plain HTTP.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn api_get<F>(&mut self, uri: &str, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                esp_idf_svc::http::server::Request<&mut esp_idf_svc::http::server::EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + Sync
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.get(&mut self.server_manager, uri, f)?;
+        }
+        Ok(())
+    }
+
+    /// The device's name on the network, e.g. cyd, from its mDNS hostname setting, if it has one.
+    pub fn hostname(&self) -> Option<String> {
+        self.config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname")
+    }
+
     /// Where the SD card is mounted, for std::fs, or why there is none, see sd_card.rs.
     pub fn sd_card(&self) -> Result<&'static str, String> {
         #[cfg(feature = "sd-card")]
@@ -1230,6 +1253,7 @@ impl Esp32Platform {
         // start, so that they can add to it.
         #[cfg(esp_idf_esp_https_server_enable)]
         match crate::api::ApiServer::start(
+            &mut self.server_manager,
             &self.nvs_partition,
             self.config_manager.clone(),
             self.adoption.clone(),
@@ -1248,6 +1272,19 @@ impl Esp32Platform {
                 self.api_server = Some(api_server);
             }
             Err(error) => error!("Unable to start the API server: {error:#}"),
+        }
+
+        // Before the features, whose first polls might make the device restart.
+        if let Ok(sd_card) = self.sd_card() {
+            crate::starts::record(sd_card, self.firmware);
+        }
+        #[cfg(esp_idf_esp_https_server_enable)]
+        {
+            let sd_card = self.sd_card();
+            let firmware = self.firmware;
+            self.api_get("/api/starts", move |request| {
+                crate::api::respond(request, 200, &crate::starts::to_json(sd_card.clone(), firmware))
+            })?;
         }
 
         let features = std::mem::take(&mut self.features);

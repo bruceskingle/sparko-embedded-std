@@ -18,10 +18,13 @@ use sparko_embedded_std::task::scheduler::ScheduledTask;
 
 /// Optional, so that the clock still starts on a board where they have never been set.
 #[derive(FeatureConfig)]
+#[config(label = "Clock")]
 pub struct AnalogClockConfig {
     /// Green if not set.
+    #[config(label = "Clock Colour")]
     pub clock_color: Option<RGB8>,
     /// Black if not set.
+    #[config(label = "Background Colour")]
     pub bg_color: Option<RGB8>,
 }
 

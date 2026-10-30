@@ -80,9 +80,18 @@ which stays for the captive portal and `/config`. The device makes an EC P-256 k
 first boot and keeps them in the `device` NVS namespace (`identity.rs`); its ID is the Wi-Fi MAC. Endpoints:
 `GET /api/info`, `GET`/`POST /api/config` (JSON from `ConfigSpec`, `config_json.rs` in sparko-embedded-std; secrets
 only as `isSet`; POST changes only what it names, checks everything before saving, null clears an optional setting,
-takes effect after a restart), `POST /api/restart`. Features add their own with `sparko.api_server`'s `on`. Board
-crates name their firmware with `with_firmware`. HTTPS costs about 20 KB of heap idle on the CYD. No authentication
-yet: adoption (pairing code, device key) is next.
+takes effect after a restart), `GET /api/memory` (heap by kind, task stack high-water marks with
+`CONFIG_FREERTOS_USE_TRACE_FACILITY`), `GET /api/starts` (each start's time and reset reason, logged on the SD card in `device/starts.jsonl` before the
+features start, and counted in NVS from the first moment, `starts.rs`), `POST /api/restart`. `/api/info` includes
+`upTimeSeconds` and `resetReason`.
+Features add their own with `sparko.api_server`'s `on`, or for reading, `sparko.api_get`, which also serves them over
+plain HTTP on port 80, as does `/api/info`. Board crates name their firmware with `with_firmware`.
+
+Adoption (`adoption.rs`): a pairing code on the screen, then the app's key in NVS; after that every request but
+`/api/info` needs `Authorization: Bearer <key>` over HTTPS, or, for `api_get` reads over HTTP,
+`Sparko-HMAC-SHA256 <unix time>:<hex HMAC-SHA256 of "<method> <uri> <time>" with the key's 32 bytes>` within 60 s
+of the device's clock, 5 min, as the HTTP server serves one request at a time (`Adoption::is_signed`), so the key never crosses the network in clear. HTTPS connections cost
+tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; changes and adoption stay on HTTPS.
 
 ## Conventions
 

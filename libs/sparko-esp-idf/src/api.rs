@@ -7,10 +7,14 @@
 //! - POST /api/release
 //! - GET /api/config: every feature's config, see ConfigManager::to_json, with secrets only as set or not.
 //! - POST /api/config: changes it, see ConfigManager::apply_json, which takes effect after a restart.
+//! - GET /api/memory: where the RAM is, see memory.rs.
+//! - GET /api/starts: when and why the device started, see starts.rs, also over plain HTTP, see get.
 //! - POST /api/restart
 //!
-//! Features add their own, e.g. the data they capture, with on. Once the device has been adopted, every request but
-//! /api/info and adoption's needs the adopting app's key, see Adoption::is_authorised.
+//! Features add their own, e.g. the data they capture, with on, or, for reading, with get, which also serves it over
+//! plain HTTP, on port 80, for requests signed with the key, see Adoption::is_signed, as HTTPS needs RAM the device may
+//! not have to spare while it is polling over HTTPS itself. /api/info is on port 80 too. Once the device has been
+//! adopted, every request but /api/info and adoption's needs the adopting app's key, see Adoption::is_authorised.
 
 use std::sync::Arc;
 
@@ -24,6 +28,7 @@ use serde_json::{Value, json};
 use sparko_embedded_std::config_manager::ConfigManager;
 
 use crate::Firmware;
+use crate::http::EspHttpServerManager;
 use crate::adoption::{Adoption, PAIRING_TIME};
 use crate::identity::DeviceIdentity;
 
@@ -38,6 +43,7 @@ pub struct ApiServer {
 
 impl ApiServer {
     pub(crate) fn start(
+        http: &mut EspHttpServerManager<'static>,
         nvs_partition: &EspNvsPartition<NvsDefault>,
         config_manager: Arc<ConfigManager>,
         adoption: Arc<Adoption>,
@@ -47,8 +53,11 @@ impl ApiServer {
         let mut server = EspHttpServer::new(&Configuration {
             // Its own control port, as the HTTP server has the default one.
             ctrl_port: 32769,
-            // Each HTTPS connection needs about 30 KB while it is open, see sdkconfig.defaults.
-            max_open_sockets: 2,
+            // Each HTTPS connection needs about 30 KB while it is open, see sdkconfig.defaults, so only one, which an app
+            // can share by making its requests one at a time, as marco-sparko does, and a new one closes the oldest.
+            max_open_sockets: 1,
+            // It needed about 5 KB, with a TLS handshake, of the default 10 KB.
+            stack_size: 7168,
             server_certificate: Some(X509::pem(identity.cert_pem)),
             private_key: Some(X509::pem(identity.key_pem)),
             ..Default::default()
@@ -58,6 +67,12 @@ impl ApiServer {
         let info_config = config_manager.clone();
         let info_adoption = adoption.clone();
         server.fn_handler("/api/info", Method::Get, move |request| {
+            respond(request, 200, &info(&info_identity, &info_config, &info_adoption, firmware))
+        })?;
+        let info_identity = identity.clone();
+        let info_config = config_manager.clone();
+        let info_adoption = adoption.clone();
+        http.on("/api/info", Method::Get, move |request| {
             respond(request, 200, &info(&info_identity, &info_config, &info_adoption, firmware))
         })?;
 
@@ -118,6 +133,14 @@ impl ApiServer {
             }
         })?;
 
+        let memory_adoption = adoption.clone();
+        server.fn_handler("/api/memory", Method::Get, move |request| {
+            if !authorised(&memory_adoption, &request) {
+                return unauthorised(request);
+            }
+            respond(request, 200, &crate::memory::to_json())
+        })?;
+
         let restart_adoption = adoption.clone();
         server.fn_handler("/api/restart", Method::Post, move |request| {
             if !authorised(&restart_adoption, &request) {
@@ -125,10 +148,11 @@ impl ApiServer {
             }
             respond(request, 200, &json!({ "restarting": true }))?;
             // After the response has gone.
-            std::thread::spawn(|| {
+            // A small stack, as the default may not fit in the RAM which is left.
+            std::thread::Builder::new().stack_size(4096).spawn(|| {
                 std::thread::sleep(std::time::Duration::from_secs(1));
                 unsafe { esp_idf_sys::esp_restart() };
-            });
+            })?;
             Ok::<(), anyhow::Error>(())
         })?;
 
@@ -159,31 +183,55 @@ impl ApiServer {
         })?;
         Ok(self)
     }
+
+    /// Adds a handler for reading, see on, which is also served over plain HTTP, by http, for requests signed with the
+    /// adopting app's key, see Adoption::is_signed.
+    pub fn get<F>(&mut self, http: &mut EspHttpServerManager<'static>, uri: &str, f: F) -> anyhow::Result<&mut Self>
+    where
+        F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + Sync + 'static,
+    {
+        let f = Arc::new(f);
+        let adoption = self.adoption.clone();
+        let signed = f.clone();
+        http.on(uri, Method::Get, move |request| {
+            if !adoption.is_signed("GET", request.uri(), request.header("Authorization")) {
+                return unauthorised(request);
+            }
+            signed(request)
+        })?;
+        self.on(uri, Method::Get, move |request| f(request))
+    }
 }
 
 fn authorised(adoption: &Adoption, request: &Request<&mut EspHttpConnection<'_>>) -> bool {
     adoption.is_authorised(request.header("Authorization"))
 }
 
-fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<()> {
+pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<()> {
     respond(request, 401, &json!({ "error": "the device has been adopted, and this needs the adopting app's key" }))
 }
 
-/// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, and its features.
+/// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, how long it has
+/// been running and why it last started, and its features.
 fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Adoption, firmware: Firmware) -> Value {
     let features: Vec<Value> = config_manager
         .features
         .values()
-        .map(|feature| json!({ "name": feature.name, "enabled": feature.inner.lock().unwrap().enabled.is_enabled() }))
+        .map(|feature| {
+            let config = feature.inner.lock().unwrap();
+            json!({ "name": feature.name, "label": config.spec.label, "enabled": config.enabled.is_enabled() })
+        })
         .collect();
     json!({
         "id": identity.id,
+        "hostname": config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname"),
         "board": crate::board_name(),
         "firmware": { "name": firmware.name, "version": firmware.version },
         "platform": { "name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION") },
         "certificateFingerprint": identity.fingerprint,
         "adopted": adoption.is_adopted(),
         "upTimeSeconds": unsafe { esp_idf_sys::esp_timer_get_time() } / 1_000_000,
+        "resetReason": crate::reset_reason(),
         "features": features,
     })
 }

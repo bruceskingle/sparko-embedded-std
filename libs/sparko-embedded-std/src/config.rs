@@ -170,6 +170,8 @@ pub struct ConfigSpecValue {
     pub problem_id: ProblemId,
     /// A password or key, which is never shown on the config page or written to the log, see redact.
     pub secret: bool,
+    /// What the config page, and an app, show it as, instead of its name, e.g. WiFi Password.
+    pub label: Option<&'static str>,
 }
 
 impl ConfigSpecValue {
@@ -179,7 +181,13 @@ impl ConfigSpecValue {
             required,
             problem_id: None,
             secret: false,
+            label: None,
         }
+    }
+
+    pub fn with_label(mut self, label: Option<&'static str>) -> Self {
+        self.label = label;
+        self
     }
 
     pub fn with_secret(mut self, secret: bool) -> Self {
@@ -212,12 +220,14 @@ impl std::fmt::Debug for ConfigSpecValue {
 
 pub struct ConfigSpecBuilder {
     map: IndexMap<String, ConfigSpecValue>,
+    label: Option<&'static str>,
 }
 
 impl ConfigSpecBuilder {
     fn new() -> Self {
         Self {
             map: IndexMap::new(),
+            label: None,
         }
     }
 
@@ -243,16 +253,25 @@ impl ConfigSpecBuilder {
         Ok(())
     }
 
+    /// What the config page, and an app, show the feature as, e.g. Tesla Powerwall, see ConfigSpec::label.
+    pub fn with_label(mut self, label: Option<&'static str>) -> Self {
+        self.label = label;
+        self
+    }
+
     pub fn build(mut self) -> ConfigSpec {
         self.map.shrink_to_fit();
 
-        ConfigSpec { map: self.map }
+        ConfigSpec { map: self.map, label: self.label }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ConfigSpec {
     pub map: IndexMap<String, ConfigSpecValue>,
+    /// What the config page, and an app, show the feature as, instead of its name, from
+    /// #[config(label = "...")] on its config struct.
+    pub label: Option<&'static str>,
 }
 
 impl ConfigSpec {

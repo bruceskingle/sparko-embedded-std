@@ -172,11 +172,13 @@ impl MdnsResponder {
 
             let hostname = hostname.clone();
 
-            thread::spawn(move || {
+            // Not the default stack, 16 KB on some boards, as it only needs room for a packet, and the RAM is needed for
+            // HTTPS connections.
+            thread::Builder::new().stack_size(6144).spawn(move || {
                 if let Err(error) = Self::run(wifi_receiver, hostname) {
                     error!("mDNS error: {}", error);
                 }
-            });
+            })?;
 
         }
         Ok(())

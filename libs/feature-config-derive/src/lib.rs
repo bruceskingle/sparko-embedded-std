@@ -27,6 +27,10 @@ use syn::{
 /// `#[config(secret)]` on a string field marks a password or key, which the
 /// config page never shows and the log never contains, see `ConfigSpecValue::secret`.
 ///
+/// `#[config(label = "WiFi Password")]` is what the config page, and an app, show
+/// instead of the field's name, see `ConfigSpecValue::label`. On the struct, it is
+/// the feature's, e.g. `#[config(label = "Tesla Powerwall")]`, see `ConfigSpec::label`.
+///
 /// # Example
 ///
 /// ```rust
@@ -70,8 +74,11 @@ fn parse_string_len_attr(field: &syn::Field) -> syn::Result<Option<Expr>> {
                 Ok(())
             } else if meta.path.is_ident("secret") {
                 Ok(()) // see parse_secret_attr
+            } else if meta.path.is_ident("label") {
+                let _: syn::LitStr = meta.value()?.parse()?; // see parse_label_attr
+                Ok(())
             } else {
-                Err(meta.error("unknown config attribute; expected `len = N` or `secret`"))
+                Err(meta.error("unknown config attribute; expected `len = N`, `secret` or `label = \"...\"`"))
             }
         })?;
         if len_expr.is_some() {
@@ -93,11 +100,32 @@ fn parse_secret_attr(field: &syn::Field) -> syn::Result<bool> {
                 secret = true;
             } else if meta.path.is_ident("len") {
                 let _: Expr = meta.value()?.parse()?; // see parse_string_len_attr
+            } else if meta.path.is_ident("label") {
+                let _: syn::LitStr = meta.value()?.parse()?; // see parse_label_attr
             }
             Ok(())
         })?;
     }
     Ok(secret)
+}
+
+/// The label of a field with `#[config(label = "...")]`, which the config page shows instead of its name.
+fn parse_label_attr(field: &syn::Field) -> syn::Result<Option<syn::LitStr>> {
+    let mut label = None;
+    for attr in &field.attrs {
+        if !attr.path().is_ident("config") {
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("label") {
+                label = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("len") {
+                let _: Expr = meta.value()?.parse()?; // see parse_string_len_attr
+            }
+            Ok(())
+        })?;
+    }
+    Ok(label)
 }
 
 // ── type classification ──────────────────────────────────────────────────────
@@ -426,7 +454,7 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
 /// All values are `None` — `to_config_spec` describes the schema, not an instance.
 /// For string fields the length expression is emitted as-is, so both literals
 /// and named constants work correctly.
-fn emit_to_with(kind: &FieldKind, key: &str, secret: bool) -> TokenStream2 {
+fn emit_to_with(kind: &FieldKind, key: &str, secret: bool, label: Option<syn::LitStr>) -> TokenStream2 {
     let typed_value_none = match kind {
         FieldKind::Str { len, .. } => quote! { TypedValue::String(#len, None) },
         FieldKind::Known {
@@ -464,10 +492,14 @@ fn emit_to_with(kind: &FieldKind, key: &str, secret: bool) -> TokenStream2 {
             ..
         }
     );
+    let label = match label {
+        Some(label) => quote! { Some(#label) },
+        None => quote! { None },
+    };
     quote! {
         .with(
             #key.to_string(),
-            ConfigSpecValue::new(#typed_value_none, #required).with_secret(#secret),
+            ConfigSpecValue::new(#typed_value_none, #required).with_secret(#secret).with_label(#label),
         )?
     }
 }
@@ -476,6 +508,25 @@ fn emit_to_with(kind: &FieldKind, key: &str, secret: bool) -> TokenStream2 {
 
 fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let name = &input.ident;
+
+    // The feature's label, from #[config(label = "...")] on the struct.
+    let mut label = None;
+    for attr in &input.attrs {
+        if attr.path().is_ident("config") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("label") {
+                    label = Some(meta.value()?.parse::<syn::LitStr>()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unknown config attribute on a struct; expected `label = \"...\"`"))
+                }
+            })?;
+        }
+    }
+    let label = match label {
+        Some(label) => quote! { Some(#label) },
+        None => quote! { None },
+    };
 
     let fields = match &input.data {
         Data::Struct(s) => match &s.fields {
@@ -512,7 +563,7 @@ fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
         }
 
         from_extractions.push(emit_from_extraction(field_ident, &kind, &key));
-        to_withs.push(emit_to_with(&kind, &key, secret));
+        to_withs.push(emit_to_with(&kind, &key, secret, parse_label_attr(field)?));
         from_field_inits.push(quote! { #field_ident, });
     }
 
@@ -525,6 +576,7 @@ fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
             fn to_config_spec() -> anyhow::Result<ConfigSpec> {
                 Ok(ConfigSpec::builder()
+                    .with_label(#label)
                     #(#to_withs)*
                     .build())
             }

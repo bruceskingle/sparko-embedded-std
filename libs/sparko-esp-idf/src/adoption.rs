@@ -5,7 +5,8 @@
 //!    AdoptionOverlay, with the start of its certificate's fingerprint, which the app also shows, for the careful.
 //! 2. The user types the code into the app, which sends it with a key it made, 32 random bytes as hex. If the code
 //!    is right, the device keeps the key, and from then on every API request but /api/info must have it, as
-//!    Authorization: Bearer <key>, which HTTPS keeps secret.
+//!    Authorization: Bearer <key>, which HTTPS keeps secret, or, for reading over plain HTTP, which costs the device
+//!    far less RAM than HTTPS, signed with it, see is_signed, so that the key is never sent where it can be seen.
 //!
 //! A code lasts PAIRING_TIME and MAX_ATTEMPTS wrong guesses, after which pairing must start again, which needs someone
 //! to read the screen. The app releases the device through the API when it no longer manages it, or if the app has
@@ -27,6 +28,11 @@ use crate::identity::DEVICE_NAMESPACE;
 const KEY_KEY: &str = "api_key";
 pub const PAIRING_TIME: Duration = Duration::from_secs(120);
 const MAX_ATTEMPTS: u8 = 3;
+/// How far, in seconds, the time of a signed request may be from the device's, see is_signed, long enough for one which
+/// waited while the HTTP server, which serves one at a time, sent another a page of records.
+const SIGNATURE_WINDOW: i64 = 5 * 60;
+/// What a signed request's Authorization header starts with, see is_signed.
+pub const SIGNATURE_SCHEME: &str = "Sparko-HMAC-SHA256 ";
 /// How long the BOOT button must be held to release the device.
 const RELEASE_HOLD: Duration = Duration::from_secs(5);
 /// How long the screen says the device has been adopted or released, see AdoptionOverlay.
@@ -76,6 +82,39 @@ impl Adoption {
         let given = authorization.and_then(|header| header.strip_prefix("Bearer ")).unwrap_or_default();
         // In constant time, so that the time taken does not tell how much of it was right.
         given.len() == key.len() && given.bytes().zip(key.bytes()).fold(0u8, |diff, (a, b)| diff | (a ^ b)) == 0
+    }
+
+    /// Whether a request signed with this Authorization header may read the API over plain HTTP: any if the device has
+    /// not been adopted, as over HTTPS, otherwise only one signed with the key, as
+    /// Sparko-HMAC-SHA256 <time>:<signature>, the time in seconds since 1970, within SIGNATURE_WINDOW of the device's,
+    /// and the signature the HMAC-SHA256, as hex, with the key, as its 32 bytes, of "<method> <uri> <time>", e.g.
+    /// "GET /api/capture/tesla/records?since=2026-10-30T06:00:00Z 1793340000". Someone who sees a request can only
+    /// make it again, within the window, which for reading does no harm.
+    pub fn is_signed(&self, method: &str, uri: &str, authorization: Option<&str>) -> bool {
+        use hmac::Mac;
+
+        let state = self.state.lock().unwrap();
+        let Some(key) = &state.key else {
+            return true;
+        };
+        let Some((time, signature)) =
+            authorization.and_then(|header| header.strip_prefix(SIGNATURE_SCHEME)).and_then(|rest| rest.split_once(':'))
+        else {
+            return false;
+        };
+        let (Ok(time), Some(signature), Some(key)) = (time.parse::<i64>(), from_hex(signature), from_hex(key)) else {
+            return false;
+        };
+        if (chrono::Utc::now().timestamp() - time).abs() > SIGNATURE_WINDOW {
+            warn!("A signed request's time, {time}, is not the device's, {}", chrono::Utc::now().timestamp());
+            return false;
+        }
+        let Ok(mut mac) = hmac::Hmac::<sha2::Sha256>::new_from_slice(&key) else {
+            return false;
+        };
+        mac.update(format!("{method} {uri} {time}").as_bytes());
+        // In constant time.
+        mac.verify_slice(&signature).is_ok()
     }
 
     /// Starts pairing with a new code, replacing any before it, returning how long it lasts.
@@ -305,4 +344,11 @@ impl<DM: sparko_embedded_std::graphics::DisplayManager> sparko_embedded_std::tas
     fn name(&self) -> &str {
         "Adoption Overlay"
     }
+}
+
+fn from_hex(text: &str) -> Option<Vec<u8>> {
+    if text.len() % 2 != 0 {
+        return None;
+    }
+    (0..text.len()).step_by(2).map(|at| u8::from_str_radix(text.get(at..at + 2)?, 16).ok()).collect()
 }

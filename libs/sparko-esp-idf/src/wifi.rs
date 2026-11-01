@@ -20,6 +20,9 @@ use sparko_embedded_std::problem::ProblemManager;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 
 use crate::core::PASSWORD_LEN;
@@ -27,6 +30,29 @@ use crate::core::SSID_LEN;
 
 /// The name of the Wi-Fi network the device makes when it has not been set up, see start_access_point.
 pub const ACCESS_POINT_SSID: &str = "ESP32-Setup";
+
+/// Starts connecting to the Wi-Fi again after a disconnection, for the given reason, see start_client. Each failed
+/// attempt is another disconnection, so this keeps trying until the network is back.
+fn reconnect(reason: u32) {
+    log::warn!("WiFi disconnected, reason {reason}, reconnecting");
+    let result = unsafe { esp_idf_sys::esp_wifi_connect() };
+    if result != esp_idf_sys::ESP_OK {
+        log::error!("WiFi reconnect failed to start, {result}");
+    }
+}
+
+/// Why the Wi-Fi disconnected, for the device's status, see start_client.
+fn reason_text(reason: u32) -> String {
+    #[allow(non_upper_case_globals)]
+    match reason {
+        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_NO_AP_FOUND => String::from("no network found"),
+        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_ASSOC_FAIL => String::from("could not join"),
+        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_CONNECTION_FAIL => String::from("connection failed"),
+        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_BEACON_TIMEOUT => String::from("lost the network"),
+        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_AUTH_EXPIRE => String::from("sign in timed out"),
+        reason => format!("reason {reason}"),
+    }
+}
 
 pub struct WiFiManager<'a> {
     wifi: EspWifi<'a>,
@@ -159,7 +185,10 @@ impl WiFiManager<'_> {
         Ok(ip_info.ip)
     }
 
-    pub fn start_client(&mut self, config: &Config) -> anyhow::Result<std::net::Ipv4Addr> {
+    /// Connects to the configured network, telling progress how it is going, e.g. "Try 3, no network found", for
+    /// the device's status, until it has an address, which it returns, or the network has rejected it, e.g. as the
+    /// password is wrong, when the problem is set and the device is set up again, see Esp32Platform::start.
+    pub fn start_client(&mut self, config: &Config, progress: &mut dyn FnMut(&str)) -> anyhow::Result<std::net::Ipv4Addr> {
         let core_config = CoreConfig::from_config_spec(&config.spec)?;
         let wifi_configuration: embedded_svc::wifi::Configuration =
             embedded_svc::wifi::Configuration::Client(ClientConfiguration {
@@ -175,6 +204,17 @@ impl WiFiManager<'_> {
         self.wifi.set_configuration(&wifi_configuration)?;
 
         let problem = self.problem.clone();
+        // Set once the device has its address, after which any disconnection, e.g. as the router restarted, is
+        // reconnected from. Before then, a rejection by the network, as the password is wrong, is reported as a
+        // problem, and any other disconnection, e.g. as the network is not there yet after a power cut, is reconnected
+        // from too.
+        let connected = Arc::new(AtomicBool::new(false));
+        let has_connected = connected.clone();
+        // How the connecting is going, for progress, and how many tries it has taken.
+        let state = Arc::new(Mutex::new(String::from("Connecting")));
+        let event_state = state.clone();
+        let tries = Arc::new(AtomicU32::new(1));
+        let event_tries = tries.clone();
 
         let wifi_sub: esp_idf_svc::eventloop::EspSubscription<'_, esp_idf_svc::eventloop::System> = self.sys_loop.subscribe::<WifiEvent, _>(move |event: WifiEvent| {
             match event {
@@ -182,10 +222,18 @@ impl WiFiManager<'_> {
                 WifiEvent::ScanDone(sta_scan_done_ref) => info!("WiFi Scan Done: {:?} networks found", sta_scan_done_ref),
                 WifiEvent::StaStarted => info!("WiFi Station Started"),
                 WifiEvent::StaStopped => info!("WiFi Station Stopped"),
-                WifiEvent::StaConnected(sta_connected_ref) => info!("WiFi Station Connected {:?}", sta_connected_ref),
+                WifiEvent::StaConnected(sta_connected_ref) => {
+                    info!("WiFi Station Connected {:?}", sta_connected_ref);
+                    *event_state.lock().unwrap() = String::from("Joined, getting an address");
+                },
                 WifiEvent::StaDisconnected(sta_disconnected_ref) => {
                     info!("WiFi Station Disconnected {:?}", sta_disconnected_ref);
-                    match sta_disconnected_ref.reason() as u32{
+                    let reason = sta_disconnected_ref.reason() as u32;
+                    if has_connected.load(Ordering::Relaxed) {
+                        reconnect(reason);
+                        return;
+                    }
+                    match reason {
                         esp_idf_sys::wifi_err_reason_t_WIFI_REASON_AUTH_FAIL => {
                             info!("WiFi Station Authentication Failed");
                             problem.set("WiFi authentication failed. Please check your password.");
@@ -198,11 +246,11 @@ impl WiFiManager<'_> {
                             info!("WiFi Station Handshake Timeout");
                             problem.set("WiFi handshake timeout. Please check your password");
                         },
-                        esp_idf_sys::wifi_err_reason_t_WIFI_REASON_NO_AP_FOUND => {
-                            info!("WiFi Station No AP Found");
-                            problem.set("WiFi no access point found. Please check your network settings and try again.");
+                        reason => {
+                            let tries = event_tries.fetch_add(1, Ordering::Relaxed);
+                            *event_state.lock().unwrap() = format!("Try {tries}, {}", reason_text(reason));
+                            reconnect(reason);
                         },
-                        _ => {}
                     }
                 },
                 WifiEvent::StaAuthmodeChanged => info!("WiFi Station Auth Mode Changed"),
@@ -223,18 +271,6 @@ impl WiFiManager<'_> {
                 WifiEvent::RocDone => info!("WiFi Roc Done"),
                 WifiEvent::HomeChannelChange(home_channel_change) => info!("WiFi Home Channel Change {:?}", home_channel_change),
             }
-
-            // if let WifiEvent::StaDisconnected(_) = event {
-            //     panic!("WiFi disconnected");
-
-            //     // // Drop server so it gets recreated
-            //     // *server_clone.lock().unwrap() = None;
-
-            //     // // Trigger reconnect
-            //     // if let Ok(mut wifi) = wifi_clone.lock() {
-            //     //     let _ = wifi.connect();
-            //     // }
-            // }
         })?;
 
         *self.wifi_sub.lock().unwrap() = Some(wifi_sub);
@@ -269,8 +305,14 @@ impl WiFiManager<'_> {
 
         // Wait for IP (this replaces wait_netif_up)
         let ip_info;
-        // while self.failure_reason.lock().unwrap().is_none() {
+        let mut shown = String::new();
         loop {
+            let now = state.lock().unwrap().clone();
+            if now != shown {
+                progress(&now);
+                shown = now;
+            }
+
             if self.problem.is_set() {
                 log::error!("WiFi connection failed: {}", self.problem);
                 return Err(anyhow::anyhow!(self.problem.to_string()));
@@ -289,10 +331,12 @@ impl WiFiManager<'_> {
 
         // let ip_info = self.wifi.sta_netif().get_ip_info()?;
 
-        println!("Wifi DHCP info: {:?}", ip_info);
+        // Logged, not printed, as println! panics when the console is the USB port and no computer is reading it.
+        info!("Wifi DHCP info: {:?}", ip_info);
 
         // EspPing::default().ping(ip_info.subnet.gateway, &esp_idf_svc::ping::Configuration::default())?;
 
+        connected.store(true, Ordering::Relaxed);
         self.wifi_sender.send(ip_info.ip)?;
         Ok(ip_info.ip)
     }

@@ -227,7 +227,7 @@ impl ResolveTask {
         let request = http_client.request(Method::Get, url, &[])?;
         let mut response = request.submit()?;
 
-        println!("Status: {}", response.status());
+        log::info!("Status: {}", response.status());
 
         let mut body = [0u8; 512];
         let bytes_read = response.read(&mut body)?;
@@ -236,7 +236,7 @@ impl ResolveTask {
             .unwrap_or("invalid utf8")
             .trim();
 
-        println!("Body: {}", response);
+        log::info!("Body: {}", response);
         // println!(
         //     "IP Address: {}",
         //     addr

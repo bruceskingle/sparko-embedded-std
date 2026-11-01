@@ -22,6 +22,7 @@ mod identity;
 #[cfg(esp_idf_esp_https_server_enable)]
 mod memory;
 mod starts;
+pub mod panics;
 
 /// The display's SPI device, on a bus which lives as long as the device, so that other devices can share it, e.g. the
 /// SD card slot of the Waveshare ESP32-C6-Touch-LCD-1.47, see sd_card.rs.

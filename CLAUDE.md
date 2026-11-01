@@ -98,6 +98,10 @@ tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; chan
 - Builders: `Type::builder()`, chainable `with_*`, callable `add_*`, `build()` shrinks collections, which are then
   treated as immutable.
 - Fallible functions return `anyhow::Result`.
+- Log with the `log` macros (`info!`, `warn!`, ...), never `println!`, `print!` or `eprintln!`. On a chip whose
+  console is its own USB port, e.g. the ESP32-C6, writing to stdout fails when no computer is reading the port, and
+  `println!` panics on a failed write ("failed printing to stdout"), so the device restarts on a charger or a hub but
+  not on a computer. The `log` macros go through ESP-IDF's logging, which drops what it cannot send.
 
 ## Working with the owner
 

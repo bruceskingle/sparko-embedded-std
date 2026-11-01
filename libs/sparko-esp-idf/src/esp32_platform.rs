@@ -386,6 +386,7 @@ impl Esp32PlatformBuilder {
 
         // Bind the log crate to the ESP Logging facilities
         esp_idf_svc::log::EspLogger::initialize_default();
+        crate::panics::install();
 
         let nvs_partition: esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault> =
             EspDefaultNvsPartition::take()?;
@@ -1270,11 +1271,30 @@ impl Esp32Platform {
     ) -> anyhow::Result<()> {
         // start wifi
 
+        // The network, why the device started, e.g. Brownout, and how joining is going, so that it can be seen why a
+        // device which is not plugged into a computer is not joining.
         let ssid = self.config_manager.value(crate::core::CORE_FEATURE_NAME, "ssid").unwrap_or_default();
-        self.show_status(Status::Initializing(InitStatus::AwaitingClientIpAddress), &[format!("Network {ssid}")])?;
+        let mut joining = vec![format!("Network {ssid}"), format!("Started by {}", crate::reset_reason())];
+        if let Some(panic) = crate::panics::last() {
+            joining.push(panic.to_string());
+        }
+        self.show_status(Status::Initializing(InitStatus::AwaitingClientIpAddress), &joining)?;
+        #[cfg(feature = "display")]
+        let display_manager = self.display_manager.clone();
+        #[allow(unused_variables)]
+        let mut progress = |state: &str| {
+            #[cfg(feature = "display")]
+            {
+                let details: Vec<String> = joining.iter().cloned().chain([state.to_string()]).collect();
+                if let Err(error) = display_manager.lock().unwrap()
+                    .show_status(&Status::Initializing(InitStatus::AwaitingClientIpAddress), &details) {
+                    log::warn!("Unable to show the Wi-Fi progress, {error:#}");
+                }
+            }
+        };
         let ip_address = self
             .wifi_manager
-            .start_client(&core_feature_holder.config)?;
+            .start_client(&core_feature_holder.config, &mut progress)?;
 
         info!("Wifi started: ip_address={}", &ip_address);
         self.ip_address = Some(ip_address);

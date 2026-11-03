@@ -46,6 +46,9 @@
 		},
 		{
 			"path": "../../.marco-sparko-cache"
+		},
+		{
+			"path": "boards/waveshare-s3-rlcd42"
 		}
 	],
 	"settings": {

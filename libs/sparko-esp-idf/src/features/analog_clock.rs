@@ -17,6 +17,7 @@ use sparko_embedded_std::platform::PlatformInitializer;
 use sparko_embedded_std::task::scheduler::ScheduledTask;
 
 /// Optional, so that the clock still starts on a board where they have never been set.
+#[cfg(not(feature = "mono-display"))]
 #[derive(FeatureConfig)]
 #[config(label = "Clock")]
 pub struct AnalogClockConfig {
@@ -27,6 +28,12 @@ pub struct AnalogClockConfig {
     #[config(label = "Background Colour")]
     pub bg_color: Option<RGB8>,
 }
+
+/// None on a black and white display, which draws the clock in ink on paper, see DisplayManager::map_rgb8.
+#[cfg(feature = "mono-display")]
+#[derive(FeatureConfig)]
+#[config(label = "Clock")]
+pub struct AnalogClockConfig {}
 
 pub struct AnalogClockBuilder {
     layout: Option<Layout>,
@@ -121,14 +128,32 @@ impl Feature for AnalogClock {
                 clock_renderer: ClockRenderer::new(
                     &sparko.display_manager,
                     self.layout,
-                    config.clock_color.unwrap_or(RGB8 { r: 0, g: 255, b: 0 }),
-                    config.bg_color.unwrap_or(RGB8 { r: 0, g: 0, b: 0 }),
+                    clock_color(&config),
+                    bg_color(&config),
                 )?,
             }),
             "* * * * * *",
         )?;
         Ok(())
     }
+}
+
+/// The clock's colour, green if not set, or always, on a black and white display, where it is ink.
+fn clock_color(#[allow(unused_variables)] config: &AnalogClockConfig) -> RGB8 {
+    #[cfg(not(feature = "mono-display"))]
+    if let Some(color) = config.clock_color {
+        return color;
+    }
+    RGB8 { r: 0, g: 255, b: 0 }
+}
+
+/// The background's colour, black if not set, or always, on a black and white display, where it is paper.
+fn bg_color(#[allow(unused_variables)] config: &AnalogClockConfig) -> RGB8 {
+    #[cfg(not(feature = "mono-display"))]
+    if let Some(color) = config.bg_color {
+        return color;
+    }
+    RGB8 { r: 0, g: 0, b: 0 }
 }
 
 pub struct ResolveTask<DM>

@@ -31,6 +31,10 @@ use syn::{
 /// instead of the field's name, see `ConfigSpecValue::label`. On the struct, it is
 /// the feature's, e.g. `#[config(label = "Tesla Powerwall")]`, see `ConfigSpec::label`.
 ///
+/// `#[config(min = 0, max = 100)]` on an `i32` or `i64` field shows it as a slider,
+/// with `default = N`, where it is while not set, and `preview = "/path"`, which the
+/// page POSTs each position to as it moves, see `Slider`.
+///
 /// # Example
 ///
 /// ```rust
@@ -72,13 +76,8 @@ fn parse_string_len_attr(field: &syn::Field) -> syn::Result<Option<Expr>> {
                 let value = meta.value()?; // consumes the `=`
                 len_expr = Some(value.parse()?);
                 Ok(())
-            } else if meta.path.is_ident("secret") {
-                Ok(()) // see parse_secret_attr
-            } else if meta.path.is_ident("label") {
-                let _: syn::LitStr = meta.value()?.parse()?; // see parse_label_attr
-                Ok(())
             } else {
-                Err(meta.error("unknown config attribute; expected `len = N`, `secret` or `label = \"...\"`"))
+                skip_other_attr(&meta)
             }
         })?;
         if len_expr.is_some() {
@@ -98,12 +97,10 @@ fn parse_secret_attr(field: &syn::Field) -> syn::Result<bool> {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("secret") {
                 secret = true;
-            } else if meta.path.is_ident("len") {
-                let _: Expr = meta.value()?.parse()?; // see parse_string_len_attr
-            } else if meta.path.is_ident("label") {
-                let _: syn::LitStr = meta.value()?.parse()?; // see parse_label_attr
+                Ok(())
+            } else {
+                skip_other_attr(&meta)
             }
-            Ok(())
         })?;
     }
     Ok(secret)
@@ -119,13 +116,67 @@ fn parse_label_attr(field: &syn::Field) -> syn::Result<Option<syn::LitStr>> {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("label") {
                 label = Some(meta.value()?.parse()?);
-            } else if meta.path.is_ident("len") {
-                let _: Expr = meta.value()?.parse()?; // see parse_string_len_attr
+                Ok(())
+            } else {
+                skip_other_attr(&meta)
+            }
+        })?;
+    }
+    Ok(label)
+}
+
+/// The attributes a field may have, each read by its own parse_..._attr, which passes over the others.
+const FIELD_ATTRS: &[&str] = &["len", "secret", "label", "min", "max", "default", "preview"];
+
+/// Passes over an attribute another parse_..._attr reads, consuming its value, or fails on one which is not known.
+fn skip_other_attr(meta: &syn::meta::ParseNestedMeta) -> syn::Result<()> {
+    if !FIELD_ATTRS.iter().any(|name| meta.path.is_ident(name)) {
+        return Err(meta.error(
+            "unknown config attribute; expected `len = N`, `secret`, `label = \"...\"`, `min = N`, `max = N`, \
+             `default = N` or `preview = \"/path\"`",
+        ));
+    }
+    if meta.input.peek(syn::Token![=]) {
+        let _: Expr = meta.value()?.parse()?;
+    }
+    Ok(())
+}
+
+/// A slider, from `#[config(min = N, max = N)]`, with `default = N`, where it is while the value is not set, min if
+/// not given, and `preview = "/path"`, see `Slider`.
+struct SliderAttrs {
+    min: Expr,
+    max: Expr,
+    default: Option<Expr>,
+    preview: Option<syn::LitStr>,
+}
+
+fn parse_slider_attr(field: &syn::Field) -> syn::Result<Option<SliderAttrs>> {
+    let (mut min, mut max, mut default, mut preview) = (None, None, None, None);
+    for attr in &field.attrs {
+        if !attr.path().is_ident("config") {
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("min") {
+                min = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("max") {
+                max = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("default") {
+                default = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("preview") {
+                preview = Some(meta.value()?.parse()?);
+            } else {
+                return skip_other_attr(&meta);
             }
             Ok(())
         })?;
     }
-    Ok(label)
+    match (min, max) {
+        (Some(min), Some(max)) => Ok(Some(SliderAttrs { min, max, default, preview })),
+        (None, None) if default.is_none() && preview.is_none() => Ok(None),
+        _ => Err(syn::Error::new_spanned(field, "a slider needs both `min = N` and `max = N`")),
+    }
 }
 
 // ── type classification ──────────────────────────────────────────────────────
@@ -454,7 +505,7 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
 /// All values are `None` — `to_config_spec` describes the schema, not an instance.
 /// For string fields the length expression is emitted as-is, so both literals
 /// and named constants work correctly.
-fn emit_to_with(kind: &FieldKind, key: &str, secret: bool, label: Option<syn::LitStr>) -> TokenStream2 {
+fn emit_to_with(kind: &FieldKind, key: &str, secret: bool, label: Option<syn::LitStr>, slider: Option<SliderAttrs>) -> TokenStream2 {
     let typed_value_none = match kind {
         FieldKind::Str { len, .. } => quote! { TypedValue::String(#len, None) },
         FieldKind::Known {
@@ -496,10 +547,23 @@ fn emit_to_with(kind: &FieldKind, key: &str, secret: bool, label: Option<syn::Li
         Some(label) => quote! { Some(#label) },
         None => quote! { None },
     };
+    let slider = match slider {
+        Some(SliderAttrs { min, max, default, preview }) => {
+            let default = default.unwrap_or_else(|| min.clone());
+            let preview = match preview {
+                Some(preview) => quote! { Some(#preview) },
+                None => quote! { None },
+            };
+            quote! { Some(sparko_embedded_std::config::Slider {
+                min: (#min) as i64, max: (#max) as i64, default: (#default) as i64, preview: #preview,
+            }) }
+        }
+        None => quote! { None },
+    };
     quote! {
         .with(
             #key.to_string(),
-            ConfigSpecValue::new(#typed_value_none, #required).with_secret(#secret).with_label(#label),
+            ConfigSpecValue::new(#typed_value_none, #required).with_secret(#secret).with_label(#label).with_slider(#slider),
         )?
     }
 }
@@ -562,8 +626,13 @@ fn impl_feature_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
             ));
         }
 
+        let slider = parse_slider_attr(field)?;
+        if slider.is_some() && !matches!(kind, FieldKind::Known { kt: KnownType::Int32 | KnownType::Int64, .. }) {
+            return Err(syn::Error::new_spanned(field, "a slider, `min = N, max = N`, is only valid on `i32` or `i64` fields"));
+        }
+
         from_extractions.push(emit_from_extraction(field_ident, &kind, &key));
-        to_withs.push(emit_to_with(&kind, &key, secret, parse_label_attr(field)?));
+        to_withs.push(emit_to_with(&kind, &key, secret, parse_label_attr(field)?, slider));
         from_field_inits.push(quote! { #field_ident, });
     }
 

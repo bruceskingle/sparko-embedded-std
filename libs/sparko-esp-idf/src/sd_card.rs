@@ -71,6 +71,25 @@ pub fn mount_shared(
     Ok(Box::new(mounted))
 }
 
+/// Mounts the card of a board whose slot is wired for the SDMMC host, with one data line, as the Waveshare
+/// ESP32-S3-RLCD-4.2's is, on GPIO21 (CMD), 38 (CLK) and 39 (D0), returning what must be kept for as long as it is
+/// mounted.
+#[cfg(feature = "board-waveshare-s3-rlcd42")]
+pub fn mount_mmc(
+    slot: esp_idf_hal::sd::mmc::SDMMC1<'static>,
+    cmd: esp_idf_hal::gpio::Gpio21<'static>,
+    clk: esp_idf_hal::gpio::Gpio38<'static>,
+    d0: esp_idf_hal::gpio::Gpio39<'static>,
+) -> anyhow::Result<Box<dyn Any>> {
+    use esp_idf_hal::sd::mmc::{SdMmcHostConfiguration, SdMmcHostDriver};
+    // The slot has no card detect or write protect lines. The ESP32's own pull-ups, as the board has none.
+    let host = SdMmcHostDriver::new_1bit(slot, cmd, clk, d0, AnyIOPin::none(), AnyIOPin::none(), &SdMmcHostConfiguration::new())?;
+    let card = SdCardDriver::new_mmc(host, &SdCardConfiguration::new())?;
+    let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
+    info!("SD card mounted at {MOUNT_POINT}");
+    Ok(Box::new(mounted))
+}
+
 /// The mounted card's size and free space, in bytes, from its FAT, None if there is no card mounted or it cannot be
 /// read. FatFs counts the free space the first time, which may take a while on a large card, and keeps it up to date
 /// after that.

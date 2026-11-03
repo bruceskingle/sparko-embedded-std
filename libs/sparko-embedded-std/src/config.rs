@@ -172,6 +172,20 @@ pub struct ConfigSpecValue {
     pub secret: bool,
     /// What the config page, and an app, show it as, instead of its name, e.g. WiFi Password.
     pub label: Option<&'static str>,
+    /// A number's range, which the config page shows as a slider, e.g. a volume.
+    pub slider: Option<Slider>,
+}
+
+/// A number setting shown as a slider, from min to max, see #[config(min = .., max = ..)].
+#[derive(Clone, Copy, Debug)]
+pub struct Slider {
+    pub min: i64,
+    pub max: i64,
+    /// Where the slider is while the value is not set, the value the feature uses then.
+    pub default: i64,
+    /// A path on the device the config page POSTs the slider's value to, as value=N, each time it is moved, before it
+    /// is saved, so that its effect can be tried, e.g. a volume heard.
+    pub preview: Option<&'static str>,
 }
 
 impl ConfigSpecValue {
@@ -182,11 +196,17 @@ impl ConfigSpecValue {
             problem_id: None,
             secret: false,
             label: None,
+            slider: None,
         }
     }
 
     pub fn with_label(mut self, label: Option<&'static str>) -> Self {
         self.label = label;
+        self
+    }
+
+    pub fn with_slider(mut self, slider: Option<Slider>) -> Self {
+        self.slider = slider;
         self
     }
 
@@ -214,6 +234,7 @@ impl std::fmt::Debug for ConfigSpecValue {
             .field("required", &self.required)
             .field("problem_id", &self.problem_id)
             .field("secret", &self.secret)
+            .field("slider", &self.slider)
             .finish()
     }
 }

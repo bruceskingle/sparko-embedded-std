@@ -64,12 +64,16 @@ rgb-led = ["led"]
 display = []
 smart-led-spi = []  # Device does not support DMA acces via RMT (or has no RMT if ever there is such a board) and therefore requires the SPI implementation
 display-jd9853 =[]
+display-st7305 = ["display", "mono-display"]  # The ST7305 reflective LCD, drawn on in a framebuffer, see display/st7305.rs
+mono-display = []             # The display is black and white, so features offer no colour settings, e.g. AnalogClock
 mipi-dsi-display = ["display", "mipidsi"]
 mipi-dsi-display-reset = []
 i2c = []
 imu = []
 touch-driver = []
 qmi8658 = ["imu", "i2c"]
+speaker = ["i2c"]  # The board's speaker: an ES8311 codec on its I2C bus, I2S and an amplifier, see speaker.rs and Esp32Platform::speaker
+shtc3 = ["i2c"]  # The SHTC3 temperature and humidity sensor on the board's I2C bus, see shtc3.rs and Esp32Platform::shtc3
 AXS5106L = ["touch-driver"]
 
 # board features, clients should select exactly one of these to target the board in use
@@ -79,11 +83,14 @@ board-wave-esp32c6147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
 board-xiao-esp32c6 = ["mono-led"]
 board-devkitv1 = ["mono-led", "smart-led-spi"]
 board-supermini-esp32c3 = ["mono-led", "smart-led-spi"]
+board-waveshare-s3-rlcd42 = ["display-st7305", "shtc3", "speaker"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311.
 
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
 ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
-sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6touch147), which are then not in the Remainder. Board must have one (board-cyd, board-wave-esp32c6touch147).
+boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-waveshare-s3-rlcd42).
+key-button = []                         # The board's KEY button, GPIO18 on board-waveshare-s3-rlcd42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-waveshare-s3-rlcd42).
+sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6touch147), which are then not in the Remainder. Board must have one (board-cyd, board-wave-esp32c6touch147, board-waveshare-s3-rlcd42, which has it on SDMMC: GPIO21, 38, 39).
 tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 

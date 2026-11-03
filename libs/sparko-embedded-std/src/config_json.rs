@@ -41,6 +41,11 @@ fn setting_json(name: &str, setting: &ConfigSpecValue) -> Value {
     if let Some(label) = setting.label {
         json.insert("label".to_string(), json!(label));
     }
+    if let Some(slider) = setting.slider {
+        json.insert("min".to_string(), json!(slider.min));
+        json.insert("max".to_string(), json!(slider.max));
+        json.insert("default".to_string(), json!(slider.default));
+    }
     if let TypedValue::String(len, _) = setting.value {
         json.insert("maxLength".to_string(), json!(len));
     }

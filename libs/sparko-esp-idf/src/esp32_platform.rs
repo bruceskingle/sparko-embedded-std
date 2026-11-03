@@ -290,6 +290,28 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
+/// The Waveshare ESP32-S3-RLCD-4.2, whose on-board hardware uses most of its pins: the display (GPIO5, 6, 11, 12, 40,
+/// 41), the SD card (21, 38, 39), the I2C bus of the RTC, sensor and audio codec (13, 14), the speaker's I2S and
+/// amplifier (8, 9, 16, 45, 46), and BOOT (0).
+///
+/// Its 16-pin header brings out 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. Of
+/// these, 1, 2, 3 and 17 are free, and here; 0 and 18 are the buttons, and 13 and 14 the I2C bus, which more devices
+/// can join, see Esp32Platform::i2c. 19 and 20 are the USB port, flashed and logged over, and 43 and 44 UART0, the
+/// console, so the platform keeps them. 3 is a strapping pin, read as the chip starts, so it should not be pulled low
+/// then.
+#[cfg(feature = "board-waveshare-s3-rlcd42")]
+pub struct Remainder {
+    pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
+    pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
+    pub gpio3: esp_idf_hal::gpio::Gpio3<'static>,
+    pub gpio17: esp_idf_hal::gpio::Gpio17<'static>,
+    /// The KEY button, for the project to use as it likes. Not with the key-button feature, with which the platform
+    /// wires it, see Esp32PlatformBuilder::with_key_button.
+    #[cfg(not(feature = "key-button"))]
+    pub gpio18: esp_idf_hal::gpio::Gpio18<'static>,
+    pub rmt: esp_idf_hal::rmt::RMT,
+}
+
 #[cfg(feature = "board-devkitv1")]
 pub struct Remainder {
     pub gpio4: esp_idf_hal::gpio::Gpio4<'static>,
@@ -333,6 +355,9 @@ pub struct Remainder {
     pub spi2: esp_idf_hal::spi::SPI2<'static>,
 }
 
+/// Something the app asked to be done once the platform is running, see Esp32PlatformBuilder::with_key_button.
+type OnRunning = Box<dyn FnOnce(&mut Esp32Platform) -> anyhow::Result<()>>;
+
 pub struct Esp32PlatformBuilder {
     nvs_partition: esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault>,
     // failure_reason: Arc<Mutex<Option<String>>>,
@@ -372,6 +397,19 @@ pub struct Esp32PlatformBuilder {
     back_light: PinDriver<'static, esp_idf_hal::gpio::Output>,
     #[cfg(feature = "mipi-dsi-display-reset")]
     reset: PinDriver<'static, Output>,
+    /// The display, started, and cleared to white, see st7305.rs.
+    #[cfg(feature = "display-st7305")]
+    st7305: crate::display::st7305::St7305,
+    /// The board's buttons, see Esp32Platform::key_button and boot_button.
+    #[cfg(feature = "key-button")]
+    key_button: crate::push_button::PushButton,
+    #[cfg(feature = "boot-button")]
+    boot_push_button: crate::push_button::PushButton,
+    #[cfg(feature = "speaker")]
+    speaker: crate::speaker::Speaker,
+    /// What the app asked to be done once the platform is running, before the features start, e.g. setting a button's
+    /// action, see with_key_button.
+    on_running: Vec<OnRunning>,
     #[cfg(feature = "i2c")]
     i2c: Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>>,
     #[cfg(feature = "touch-driver")]
@@ -641,6 +679,89 @@ impl Esp32PlatformBuilder {
             rmt: peripherals.rmt,
         };
 
+        #[cfg(feature = "key-button")]
+        let key_button = crate::push_button::PushButton::new("KEY", peripherals.pins.gpio18)?;
+        #[cfg(feature = "boot-button")]
+        let boot_push_button = crate::push_button::PushButton::new("BOOT", peripherals.pins.gpio0)?;
+        // The bus of the board's RTC, temperature and humidity sensor and audio codec.
+        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        let i2c = {
+            use esp_idf_hal::{i2c::{I2cConfig, I2cDriver}, units::Hertz};
+            Arc::new(Mutex::new(I2cDriver::new(
+                peripherals.i2c0,
+                peripherals.pins.gpio13, // SDA
+                peripherals.pins.gpio14, // SCL
+                &I2cConfig::new().baudrate(Hertz(400_000)),
+            )?))
+        };
+        // The ES8311 codec, on that bus, given audio over I2S on MCLK 16, BCLK 9, WS 45 and DOUT 8, and its amplifier,
+        // enabled by GPIO46. The microphones' ADC, the ES7210, on DIN 10, is not driven yet.
+        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        let speaker = {
+            use esp_idf_hal::{
+                gpio::PinDriver,
+                i2s::{
+                    I2sDriver,
+                    config::{Config, DataBitWidth, SlotMode, StdClkConfig, StdConfig, StdGpioConfig, StdSlotConfig},
+                },
+            };
+            // Silence when there is nothing to send, rather than the last audio again.
+            let config = StdConfig::new(
+                Config::new().auto_clear(true),
+                StdClkConfig::from_sample_rate_hz(crate::speaker::SAMPLE_RATE),
+                StdSlotConfig::philips_slot_default(DataBitWidth::Bits16, SlotMode::Stereo),
+                StdGpioConfig::default(),
+            );
+            let i2s = I2sDriver::new_std_tx(
+                peripherals.i2s0,
+                &config,
+                peripherals.pins.gpio9,        // BCLK
+                peripherals.pins.gpio8,        // DOUT
+                Some(peripherals.pins.gpio16), // MCLK
+                peripherals.pins.gpio45,       // WS
+            )?;
+            crate::speaker::Speaker::new(i2c.clone(), i2s, PinDriver::output(peripherals.pins.gpio46)?)?
+        };
+        // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
+        #[cfg(all(feature = "board-waveshare-s3-rlcd42", feature = "sd-card"))]
+        let sd_card = crate::sd_card::mount_mmc(peripherals.sdmmc1, peripherals.pins.gpio21, peripherals.pins.gpio38, peripherals.pins.gpio39)
+            .map_err(|error| {
+                log::warn!("No SD card: {error:#}");
+                format!("{error:#}")
+            });
+        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        let (remainder, st7305) = {
+            use esp_idf_hal::{
+                gpio::{AnyIOPin, PinDriver},
+                spi::{Dma, SpiConfig, SpiDeviceDriver, SpiDriver, SpiDriverConfig},
+                units::Hertz,
+            };
+            let remainder = Remainder {
+                gpio1: peripherals.pins.gpio1,
+                gpio2: peripherals.pins.gpio2,
+                gpio3: peripherals.pins.gpio3,
+                gpio17: peripherals.pins.gpio17,
+                #[cfg(not(feature = "key-button"))]
+                gpio18: peripherals.pins.gpio18,
+                rmt: peripherals.rmt,
+            };
+            // The display only listens, so the bus has no MISO.
+            let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
+                peripherals.spi2,
+                peripherals.pins.gpio11,  // SCLK
+                peripherals.pins.gpio12,  // MOSI
+                None::<AnyIOPin<'static>>,
+                &SpiDriverConfig::new().dma(Dma::Auto(4096)),
+            )?));
+            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio40), &SpiConfig::new().baudrate(Hertz(10_000_000)))?;
+            let st7305 = crate::display::st7305::St7305::new(
+                spi,
+                PinDriver::output(peripherals.pins.gpio5)?,  // DC
+                PinDriver::output(peripherals.pins.gpio41)?, // Reset
+            )?;
+            (remainder, st7305)
+        };
+
         #[cfg(feature = "board-xiao-esp32c6")]
         let remainder = {
             let remainder = Remainder {
@@ -713,10 +834,42 @@ impl Esp32PlatformBuilder {
             back_light,
             #[cfg(feature = "mipi-dsi-display-reset")]
             reset,
+            #[cfg(feature = "display-st7305")]
+            st7305,
+            #[cfg(feature = "key-button")]
+            key_button,
+            #[cfg(feature = "boot-button")]
+            boot_push_button,
+            #[cfg(feature = "speaker")]
+            speaker,
+            on_running: Vec::new(),
             #[cfg(feature = "i2c")]
             i2c,
             #[cfg(feature = "touch-driver")]
             touch_driver_factory: touch_driver_factory,
+        };
+        // The sensor's settings, e.g. its offset, and a reading in the log every minute.
+        #[cfg(feature = "shtc3")]
+        let builder = {
+            let mut builder = builder;
+            builder.internal_add_feature(Box::new(crate::features::temperature_humidity::TemperatureHumidity), true)?;
+            builder
+        };
+        // The speaker's settings, e.g. its volume.
+        #[cfg(feature = "speaker")]
+        let builder = {
+            let mut builder = builder;
+            builder.internal_add_feature(Box::new(crate::features::speaker_settings::SpeakerSettings), true)?;
+            // The volume from now, not only once the features start, so that a sound played as the board starts, e.g.
+            // a startup chime, plays at it.
+            if let Some(holder) = builder.features.last() {
+                use sparko_embedded_std::config::FeatureConfig;
+                match crate::features::speaker_settings::SpeakerConfig::from_config_spec(&holder.config.spec) {
+                    Ok(config) => builder.speaker.set_volume(crate::features::speaker_settings::volume(&config)),
+                    Err(error) => error!("Unable to read the speaker's volume: {error:#}"),
+                }
+            }
+            builder
         };
         Ok((builder, remainder))
     }
@@ -741,6 +894,37 @@ impl Esp32PlatformBuilder {
     pub fn with_feature(mut self, feature: Box<dyn DynFeature>) -> anyhow::Result<Self> {
         self.internal_add_feature(feature, false)?;
         Ok(self)
+    }
+
+    /// Makes the board's KEY button run the action on_start makes, called with the platform once it is running, before
+    /// the features start, so that it can take what the action needs, e.g. the display manager. A feature can set the
+    /// button's action too, see Esp32Platform::key_button.
+    #[cfg(feature = "key-button")]
+    pub fn with_key_button(
+        mut self,
+        on_start: impl FnOnce(&mut Esp32Platform) -> anyhow::Result<crate::push_button::Action> + 'static,
+    ) -> Self {
+        self.on_running.push(Box::new(move |sparko| {
+            let action = on_start(sparko)?;
+            sparko.key_button().set_action(action);
+            Ok(())
+        }));
+        self
+    }
+
+    /// Makes the board's BOOT button, once the board has started, run the action on_start makes, as with_key_button
+    /// does. Held while the board starts, it still starts the bootloader, for flashing.
+    #[cfg(feature = "boot-button")]
+    pub fn with_boot_button(
+        mut self,
+        on_start: impl FnOnce(&mut Esp32Platform) -> anyhow::Result<crate::push_button::Action> + 'static,
+    ) -> Self {
+        self.on_running.push(Box::new(move |sparko| {
+            let action = on_start(sparko)?;
+            sparko.boot_button().set_action(action);
+            Ok(())
+        }));
+        self
     }
 
     fn internal_add_feature(
@@ -997,6 +1181,11 @@ impl Esp32PlatformBuilder {
             // )?;
         }
 
+        #[cfg(feature = "display-st7305")]
+        {
+            display_manager = crate::display::st7305::St7305DisplayManager { display: self.st7305, overlay: false, generation: 0 };
+        }
+
         #[cfg(feature = "display")]
         display_manager.set_status(&Status::Initializing(InitStatus::Starting))?;
 
@@ -1027,6 +1216,8 @@ impl Esp32PlatformBuilder {
         #[cfg(all(esp_idf_esp_https_server_enable, feature = "board-cyd"))]
         crate::adoption::watch_boot_button(adoption.clone(), self.boot_button)?;
         ConfigManager::create_pages(&config_manager, &mut server_manager)?;
+        #[cfg(feature = "speaker")]
+        crate::features::speaker_settings::add_preview(&mut server_manager, self.speaker.clone())?;
 
         // This should be in the app
 
@@ -1076,8 +1267,21 @@ impl Esp32PlatformBuilder {
 
         // END APP CODE
 
+        #[cfg(feature = "display")]
+        let display_manager = Arc::new(Mutex::new(display_manager));
+        // It is drawn on in a framebuffer, which must be sent to the panel.
+        #[cfg(feature = "display-st7305")]
+        crate::display::st7305::spawn_flusher(&display_manager)?;
+
         Ok(Esp32PlatformRunner {
             sparko_std: Esp32Platform {
+                #[cfg(feature = "key-button")]
+                key_button: self.key_button,
+                #[cfg(feature = "boot-button")]
+                boot_push_button: self.boot_push_button,
+                #[cfg(feature = "speaker")]
+                speaker: self.speaker,
+                on_running: self.on_running,
                 wifi_manager,
                 #[cfg(feature = "led")]
                 led_manager: self.led_manager,
@@ -1096,7 +1300,7 @@ impl Esp32PlatformBuilder {
                 #[cfg(feature = "sd-card")]
                 sd_card: self.sd_card,
                 #[cfg(feature = "display")]
-                display_manager: Arc::new(Mutex::new(display_manager)),
+                display_manager,
                 #[cfg(feature = "i2c")]
                 i2c: self.i2c,
                 #[cfg(feature = "imu")]
@@ -1134,6 +1338,15 @@ impl Esp32PlatformRunner {
 }
 
 pub struct Esp32Platform {
+    /// The board's buttons, see key_button and boot_button.
+    #[cfg(feature = "key-button")]
+    key_button: crate::push_button::PushButton,
+    #[cfg(feature = "boot-button")]
+    boot_push_button: crate::push_button::PushButton,
+    #[cfg(feature = "speaker")]
+    speaker: crate::speaker::Speaker,
+    /// See Esp32PlatformBuilder::on_running, done before the features start.
+    on_running: Vec<OnRunning>,
     pub wifi_manager: WiFiManager<'static>,
     #[cfg(feature = "rgb-led")]
     pub led_manager: RgbLedManager<'static>,
@@ -1158,8 +1371,8 @@ pub struct Esp32Platform {
     #[cfg(feature = "sd-card")]
     sd_card: Result<Box<dyn std::any::Any>, String>,
 
-    #[cfg(feature = "mipi-dsi-display")]
-    pub display_manager: Arc<Mutex<mipi_dsi_display_manager::MipiDsiDisplayManager>>,
+    #[cfg(feature = "display")]
+    pub display_manager: Arc<Mutex<crate::display::BoardDisplayManager>>,
     #[cfg(feature = "i2c")]
     i2c: Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>>,
     #[cfg(feature = "qmi8658")]
@@ -1207,6 +1420,37 @@ impl Esp32Platform {
     #[cfg(esp_idf_esp_https_server_enable)]
     pub fn is_adopted(&self) -> bool {
         self.adoption.is_adopted()
+    }
+
+    /// The board's speaker, see speaker.rs.
+    #[cfg(feature = "speaker")]
+    pub fn speaker(&self) -> crate::speaker::Speaker {
+        self.speaker.clone()
+    }
+
+    /// The board's I2C bus, shared with its own devices, e.g. the SHTC3, for more on the header's SDA and SCL. Hold
+    /// the lock only for each transaction, so that the board's devices are not kept waiting.
+    #[cfg(feature = "i2c")]
+    pub fn i2c(&self) -> Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>> {
+        self.i2c.clone()
+    }
+
+    /// The board's temperature and humidity sensor, see shtc3.rs.
+    #[cfg(feature = "shtc3")]
+    pub fn shtc3(&self) -> crate::shtc3::Shtc3 {
+        crate::shtc3::Shtc3::new(self.i2c.clone())
+    }
+
+    /// The board's KEY button, whose action the app, see Esp32PlatformBuilder::with_key_button, or a feature, may set.
+    #[cfg(feature = "key-button")]
+    pub fn key_button(&self) -> &crate::push_button::PushButton {
+        &self.key_button
+    }
+
+    /// The board's BOOT button, whose action the app, see Esp32PlatformBuilder::with_boot_button, or a feature, may set.
+    #[cfg(feature = "boot-button")]
+    pub fn boot_button(&self) -> &crate::push_button::PushButton {
+        &self.boot_push_button
     }
 
     /// Where the SD card is mounted, for std::fs, or why there is none, see sd_card.rs.
@@ -1330,7 +1574,7 @@ impl Esp32Platform {
             self.firmware,
         ) {
             Ok(api_server) => {
-                #[cfg(feature = "mipi-dsi-display")]
+                #[cfg(feature = "display")]
                 initializer.add_task(
                     Box::new(crate::adoption::AdoptionOverlay::new(
                         &self.display_manager,
@@ -1356,6 +1600,13 @@ impl Esp32Platform {
                 let mut response = request.into_response(200, None, &[("Content-Type", "application/json")])?;
                 crate::starts::write_json(sd_card.clone(), firmware, &mut |bytes| Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?))
             })?;
+        }
+
+        // What the app asked, e.g. the buttons' actions, before the features, which may change them.
+        for on_running in std::mem::take(&mut self.on_running) {
+            if let Err(error) = on_running(self) {
+                error!("FAILED to set up {error:#}");
+            }
         }
 
         let features = std::mem::take(&mut self.features);

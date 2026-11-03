@@ -14,6 +14,11 @@ pub use esp32_platform::*;
 pub mod api;
 #[cfg(feature = "sd-card")]
 pub mod sd_card;
+#[cfg(feature = "shtc3")]
+pub mod shtc3;
+pub mod push_button;
+#[cfg(feature = "speaker")]
+pub mod speaker;
 pub mod chip;
 
 #[cfg(esp_idf_esp_https_server_enable)]
@@ -27,7 +32,7 @@ pub mod panics;
 
 /// The display's SPI device, on a bus which lives as long as the device, so that other devices can share it, e.g. the
 /// SD card slot of the Waveshare ESP32-C6-Touch-LCD-1.47, see sd_card.rs.
-#[cfg(feature = "mipi-dsi-display")]
+#[cfg(any(feature = "mipi-dsi-display", feature = "display-st7305"))]
 pub type DisplaySpi = esp_idf_hal::spi::SpiDeviceDriver<'static, &'static esp_idf_hal::spi::SpiDriver<'static>>;
 
 /// The firmware a board crate builds, which the platform cannot know itself, see Esp32PlatformBuilder::with_firmware.
@@ -61,6 +66,11 @@ pub fn reset_reason() -> &'static str {
     }
 }
 
+#[cfg(all(feature = "boot-button", not(feature = "board-waveshare-s3-rlcd42")))]
+compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-waveshare-s3-rlcd42.");
+#[cfg(all(feature = "key-button", not(feature = "board-waveshare-s3-rlcd42")))]
+compile_error!("The key-button feature is for a board with a KEY button: board-waveshare-s3-rlcd42.");
+
 /// The board this was built for, from its board- feature.
 pub fn board_name() -> &'static str {
     if cfg!(feature = "board-cyd") {
@@ -73,6 +83,8 @@ pub fn board_name() -> &'static str {
         "wave-esp32c6147"
     } else if cfg!(feature = "board-wave-esp32c6touch147") {
         "wave-esp32c6touch147"
+    } else if cfg!(feature = "board-waveshare-s3-rlcd42") {
+        "waveshare-s3-rlcd42"
     } else if cfg!(feature = "board-xiao-esp32c6") {
         "xiao-esp32c6"
     } else {
@@ -100,6 +112,9 @@ pub mod ahrs;
 
 #[cfg(feature = "display")]
 mod display;
+/// The board's display manager, the type of Esp32Platform::display_manager, for features outside the platform.
+#[cfg(feature = "display")]
+pub use display::BoardDisplayManager;
 
 pub trait AnyhowResultExt<T> {
     fn anyhow(self) -> anyhow::Result<T>;

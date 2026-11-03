@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use log::info;
 
 use crate::{
-    config::{Config, ConfigSpec, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue},
+    config::{Config, ConfigSpec, ConfigStore, ConfigStoreFactory, EnabledState, Slider, TypedValue},
     tz::TimeZone,
 };
 
@@ -168,6 +168,49 @@ impl FeatureConfigHolder {
                 TypedValue::String(len, _) => {
                     input_type_buf = format!("text\" maxlength=\"{}", len);
                     &input_type_buf
+                }
+                TypedValue::Int32(_) | TypedValue::Int64(_) if config_value.slider.is_some() => {
+                    let Slider { min, max, default, preview } = config_value.slider.unwrap();
+                    let value = match &config_value.value {
+                        TypedValue::Int32(Some(value)) => *value as i64,
+                        TypedValue::Int64(Some(value)) => *value,
+                        _ => default,
+                    };
+                    // Each move POSTs its value to preview, one at a time, the latest once the last has been answered,
+                    // so that a fast drag does not queue up requests the device takes time over, e.g. playing a tone.
+                    let oninput = match preview {
+                        Some(preview) => format!(r#" oninput="sliderMoved(this, '{preview}')""#),
+                        None => r#" oninput="this.nextElementSibling.value = this.value""#.to_string(),
+                    };
+                    resp.write(format!(r#"
+                        <!-- Slider field {name}-->
+                        <label for="{name}">{label}</label>
+                        <div class="form_row">
+                        <input id="{name}" name="{name}" type="range" min="{min}" max="{max}" value="{value}"{oninput}>
+                        <output for="{name}">{value}</output>
+                        </div>
+            "#).as_bytes())?;
+                    if preview.is_some() {
+                        resp.write(br#"
+                        <script>
+                        if (!window.sliderMoved) {
+                            const sending = new Map();
+                            window.sliderMoved = function(slider, preview) {
+                                slider.nextElementSibling.value = slider.value;
+                                if (sending.has(slider)) { sending.set(slider, true); return; }
+                                const send = () => {
+                                    sending.set(slider, false);
+                                    fetch(preview, { method: 'POST', body: new URLSearchParams({ value: slider.value }) })
+                                        .catch(() => {})
+                                        .finally(() => { if (sending.get(slider)) send(); else sending.delete(slider); });
+                                };
+                                send();
+                            };
+                        }
+                        </script>
+            "#)?;
+                    }
+                    continue;
                 }
                 TypedValue::Int32(_) | TypedValue::Int64(_) => "number",
                 TypedValue::Bool(opt_value) => {

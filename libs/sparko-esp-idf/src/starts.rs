@@ -5,14 +5,18 @@
 //! Each start is counted in NVS, first thing, see count, and logged on the SD card, if there is one, once the time is
 //! known, see record, so that starts which were not logged, e.g. as the device restarted before it was on the Wi-Fi,
 //! show as jumps in the count.
+//!
+//! The starts are given as they are in the log, a line at a time, see write_json, not as serde_json::Values, each of
+//! which is a BTreeMap of at least 400 bytes, so that the log of a device which restarts again and again does not run
+//! it out of memory when it is read.
 
-use std::collections::VecDeque;
 use std::io::{BufRead, Write};
 use std::sync::OnceLock;
 
 use chrono::{SecondsFormat, TimeDelta, Utc};
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::{info, warn};
+use serde_json::value::RawValue;
 use serde_json::{Value, json};
 
 use crate::Firmware;
@@ -81,26 +85,40 @@ pub fn record(sd_card: &str, firmware: Firmware) {
     }
 }
 
-/// The latest starts, oldest first, up to MAX_STARTS, from the log on the SD card mounted at sd_card, or if there is
-/// none, or it cannot be read, only this one, with why not, as {"count": this start's number, "starts": [...],
-/// "problem": ...}.
-pub fn to_json(sd_card: Result<&str, String>, firmware: Firmware) -> Value {
-    let read = |sd_card: &str| -> anyhow::Result<Vec<Value>> {
-        let file = std::fs::File::open(path(sd_card))?;
-        let mut starts = VecDeque::with_capacity(MAX_STARTS);
-        for line in std::io::BufReader::with_capacity(1024, file).lines() {
-            // A line cut short by a power cut is left out.
-            let Ok(start) = serde_json::from_str::<Value>(&line?) else { continue };
-            if starts.len() == MAX_STARTS {
-                starts.pop_front();
+/// Writes, with write, the latest starts, oldest first, up to MAX_STARTS, from the log on the SD card mounted at
+/// sd_card, or if there is none, or it cannot be read, only this one, with why not, as the JSON of {"count": this
+/// start's number, "problem": ..., "starts": [...]}. The log is read twice, to count its lines, then to write the
+/// latest, a line at a time, as the latest starts of a device which restarts again and again do not fit in the RAM
+/// with the HTTPS connection they are given on.
+pub fn write_json(
+    sd_card: Result<&str, String>,
+    firmware: Firmware,
+    write: &mut dyn FnMut(&[u8]) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    let open = |sd_card: &str| std::fs::File::open(path(sd_card)).map(|file| std::io::BufReader::with_capacity(1024, file));
+    let lines = sd_card.map_err(anyhow::Error::msg).and_then(|sd_card| {
+        let count = open(sd_card)?.lines().try_fold(0usize, |count, line| line.map(|_| count + 1))?;
+        Ok((open(sd_card)?, count))
+    });
+    let problem = lines.as_ref().err().map(|error| format!("{error:#}"));
+    write(format!(r#"{{"count":{},"problem":{},"starts":["#, json!(COUNT.get()), json!(problem)).as_bytes())?;
+    match lines {
+        Ok((file, count)) => {
+            let mut first = true;
+            for line in file.lines().skip(count.saturating_sub(MAX_STARTS)) {
+                let line = line?;
+                // A line cut short by a power cut is left out.
+                if serde_json::from_str::<&RawValue>(&line).is_err() {
+                    continue;
+                }
+                if !first {
+                    write(b",")?;
+                }
+                first = false;
+                write(line.as_bytes())?;
             }
-            starts.push_back(start);
         }
-        Ok(starts.into())
-    };
-    let (starts, problem) = match sd_card.map_err(anyhow::Error::msg).and_then(read) {
-        Ok(starts) => (starts, None),
-        Err(error) => (vec![this_start(firmware)], Some(format!("{error:#}"))),
-    };
-    json!({ "count": COUNT.get(), "starts": starts, "problem": problem })
+        Err(_) => write(&serde_json::to_vec(&this_start(firmware))?)?,
+    }
+    write(b"]}")
 }

@@ -212,7 +212,7 @@ pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyh
 }
 
 /// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, how long it has
-/// been running and why it last started, and its features.
+/// been running, why it last started, and if it crashed, why, see panics.rs, its memory, and its features.
 fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Adoption, firmware: Firmware) -> Value {
     let features: Vec<Value> = config_manager
         .features
@@ -232,6 +232,11 @@ fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Ad
         "adopted": adoption.is_adopted(),
         "upTimeSeconds": unsafe { esp_idf_sys::esp_timer_get_time() } / 1_000_000,
         "resetReason": crate::reset_reason(),
+        "lastCrash": crate::panics::last(),
+        "freeHeap": unsafe { esp_idf_sys::esp_get_free_heap_size() },
+        "minimumFreeHeap": unsafe { esp_idf_sys::esp_get_minimum_free_heap_size() },
+        "largestFreeBlock": unsafe { esp_idf_sys::heap_caps_get_largest_free_block(esp_idf_sys::MALLOC_CAP_DEFAULT) },
+        "failedAllocations": crate::panics::failed_allocations(),
         "features": features,
     })
 }

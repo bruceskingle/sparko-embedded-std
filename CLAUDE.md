@@ -35,6 +35,28 @@ Each board crate selects exactly one `board-*` feature of `sparko-esp-idf`, whic
 (`display`, `rgb-led`, `smart-led-spi`, ...) its hardware has. Code behind a functional feature only compiles for
 boards which have it.
 
+### Board features, optional hardware and the Remainder
+
+This is the model every piece of on-board hardware follows, so that the platform is easy to use and hard to get wrong:
+
+- **Board features.** The project holding `main` sets exactly one `board-*` feature, which turns on the capabilities
+  that board always has, e.g. `rgb-led` or `display`. The platform drives those itself.
+- **Optional hardware features.** Hardware a project may or may not want, because its pins could be used for something
+  else, e.g. the SD card slot, has its own feature (`sd-card`), which the project sets to enable it.
+  - Setting it for a board which does not have that hardware is a **compile error**, with a message saying so, not an
+    error at run time, nor an accidental compile error elsewhere.
+  - Setting it **consumes** the hardware's pins and peripherals, e.g. GPIO N and its SPI bus, which are then **not in
+    the `Remainder`**, so a project cannot use them by mistake.
+  - Not setting it leaves every one of those pins and peripherals **in the `Remainder`** for the project to use for
+    other things. None is taken or dropped just because the board has the slot.
+- **Only header pins are in the `Remainder`.** A pin which is not on one of the board's headers can never be used for
+  anything else, so it never appears in the `Remainder`. On-board hardware all of whose pins are off the headers is
+  then simply part of the board: its `board-*` feature enables it by default, rather than it being an optional feature.
+  E.g. the CYD's SD slot (GPIO 5, 18, 19, 23) is wired only to the slot, so `board-cyd` should enable `sd-card`.
+- Pins which are only ever used by always-on hardware, e.g. the display's, are never in the `Remainder`. A pin shared
+  between always-on and optional hardware, e.g. an SPI bus the display and the SD slot share, is the platform's; only
+  the pins the optional hardware alone uses move between it and the `Remainder`.
+
 ## Building and flashing
 
 - Build a board from its own directory: `cd boards/cyd && cargo build --release`. Always `--release`. Never build the

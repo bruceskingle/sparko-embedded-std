@@ -103,7 +103,7 @@ first boot and keeps them in the `device` NVS namespace (`identity.rs`); its ID 
 `GET /api/info`, `GET`/`POST /api/config` (JSON from `ConfigSpec`, `config_json.rs` in sparko-embedded-std; secrets
 only as `isSet`; POST changes only what it names, checks everything before saving, null clears an optional setting,
 takes effect after a restart), `GET /api/memory` (heap by kind, task stack high-water marks with
-`CONFIG_FREERTOS_USE_TRACE_FACILITY`), `GET /api/starts` (each start's time and reset reason, logged on the SD card in `device/starts.jsonl` before the
+`CONFIG_FREERTOS_USE_TRACE_FACILITY`), `GET /api/starts` (each start's time and reset reason, the latest 30 logged in NVS, the device's own, before the
 features start, and counted in NVS from the first moment, `starts.rs`), `POST /api/restart`. `/api/info` includes
 `upTimeSeconds` and `resetReason`.
 Features add their own with `sparko.api_server`'s `on`, or for reading, `sparko.api_get`, which also serves them over

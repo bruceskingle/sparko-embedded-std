@@ -1589,16 +1589,14 @@ impl Esp32Platform {
         }
 
         // Before the features, whose first polls might make the device restart.
-        if let Ok(sd_card) = self.sd_card() {
-            crate::starts::record(sd_card, self.firmware);
-        }
+        crate::starts::record(&self.nvs_partition, self.firmware);
         #[cfg(esp_idf_esp_https_server_enable)]
         {
-            let sd_card = self.sd_card();
+            let nvs_partition = self.nvs_partition.clone();
             let firmware = self.firmware;
             self.api_get("/api/starts", move |request| {
                 let mut response = request.into_response(200, None, &[("Content-Type", "application/json")])?;
-                crate::starts::write_json(sd_card.clone(), firmware, &mut |bytes| Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?))
+                crate::starts::write_json(&nvs_partition, firmware, &mut |bytes| Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?))
             })?;
         }
 

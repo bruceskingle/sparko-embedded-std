@@ -1019,6 +1019,8 @@ impl Esp32PlatformBuilder {
         server_manager.init_captive_portal(&self.ap_mode)?;
 
         let config_manager = Arc::new(bare_config_manager);
+        config_manager.set_about(format!("{} {}, built for a {} board, running on an {}", self.firmware.name,
+            self.firmware.version, crate::board_name(), crate::chip::chip().describe()));
 
         #[cfg(esp_idf_esp_https_server_enable)]
         let adoption = crate::adoption::Adoption::load(&self.nvs_partition, config_manager.clone())?;

@@ -70,3 +70,13 @@ pub fn mount_shared(
     info!("SD card mounted at {MOUNT_POINT}");
     Ok(Box::new(mounted))
 }
+
+/// The mounted card's size and free space, in bytes, from its FAT, None if there is no card mounted or it cannot be
+/// read. FatFs counts the free space the first time, which may take a while on a large card, and keeps it up to date
+/// after that.
+pub fn space() -> Option<(u64, u64)> {
+    let path = std::ffi::CString::new(MOUNT_POINT).ok()?;
+    let (mut total, mut free) = (0u64, 0u64);
+    let result = unsafe { esp_idf_sys::esp_vfs_fat_info(path.as_ptr(), &mut total, &mut free) };
+    (result == esp_idf_sys::ESP_OK).then_some((total, free))
+}

@@ -74,6 +74,7 @@ impl ConfigManagerBuilder {
             problem_manager: self.problem_manager,
             ap_mode: self.ap_mode,
             commands: self.commands,
+            about: std::sync::OnceLock::new(),
         }
     }
 }
@@ -87,6 +88,9 @@ pub struct ConfigManager {
     problem_manager: Arc<ProblemManager>,
     ap_mode: Arc<Mutex<bool>>,
     commands: Box<dyn Commands>,
+    /// What the device is, which the /config page shows under its heading, e.g. the firmware, the board it was built
+    /// for and the chip it is running on, see set_about.
+    about: std::sync::OnceLock<String>,
 }
 
 impl ConfigManager {
@@ -105,6 +109,16 @@ impl ConfigManager {
         let config = feature.inner.lock().unwrap();
         let setting = config.spec.map.get(name)?;
         (!setting.secret && !setting.value.is_none()).then(|| setting.value.to_string())
+    }
+
+    /// Sets what the device is, for the /config page, once, as the platform knows it and this does not.
+    pub fn set_about(&self, about: String) {
+        let _ = self.about.set(about);
+    }
+
+    /// What the device is, as a paragraph under the /config page's heading, or nothing if it has not been set.
+    fn about_html(&self) -> String {
+        self.about.get().map(|about| format!(r#"<p class="about">{about}</p>"#)).unwrap_or_default()
     }
 
     pub fn set_managed(&self, managed: bool) {
@@ -192,9 +206,9 @@ impl ConfigManager {
             info!("No failure reason, not showing error message on config page");
         }
         if config_manager_clone.is_managed() && config_manager_clone.is_online() {
+            resp.write(format!(r#"<h1>Settings</h1>{}"#, config_manager_clone.about_html()).as_bytes())?;
             resp.write(
                 r#"
-                        <h1>Settings</h1>
                         <p>An app, such as Marco Sparko, manages this device and changes its settings.</p>
                         <p>To manage it here again, release it in the app, or hold its BOOT button for 5 seconds.</p>
                         <p><a href="/">Home</a></p>
@@ -206,9 +220,9 @@ impl ConfigManager {
             )?;
             return Ok(());
         }
+        resp.write(format!(r#"<h1>Settings</h1>{}"#, config_manager_clone.about_html()).as_bytes())?;
         resp.write(
             r#"
-                        <h1>Settings</h1>
                         <p><a href="/">Home</a></p>
                         <form method="POST" action="/update_config">"#
                 .as_bytes(),

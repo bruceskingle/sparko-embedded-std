@@ -14,6 +14,7 @@ pub use esp32_platform::*;
 pub mod api;
 #[cfg(feature = "sd-card")]
 pub mod sd_card;
+pub mod chip;
 
 #[cfg(esp_idf_esp_https_server_enable)]
 pub mod adoption;

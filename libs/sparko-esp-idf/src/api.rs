@@ -226,6 +226,8 @@ fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Ad
         "id": identity.id,
         "hostname": config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname"),
         "board": crate::board_name(),
+        // The chip, as it says it is, whichever board the firmware was built for.
+        "chip": crate::chip::chip().to_json(),
         "firmware": { "name": firmware.name, "version": firmware.version },
         "platform": { "name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION") },
         "certificateFingerprint": identity.fingerprint,

@@ -49,6 +49,9 @@
 		},
 		{
 			"path": "boards/waveshare-s3-rlcd42"
+		},
+		{
+			"path": "../bruce-db"
 		}
 	],
 	"settings": {

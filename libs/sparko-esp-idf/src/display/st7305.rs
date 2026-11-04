@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 use esp_idf_hal::gpio::{Output, PinDriver};
-use sparko_embedded_std::graphics::{Color, DisplayManager};
+use sparko_embedded_std::graphics::{Color, Console, DisplayManager};
 
 pub const WIDTH: u32 = 400;
 pub const HEIGHT: u32 = 300;
@@ -174,6 +174,13 @@ impl DisplayManager for St7305DisplayManager {
 
     fn display(&mut self) -> &mut Self::Display {
         &mut self.display
+    }
+
+    /// FONT_9X15_BOLD, 44 characters across and 19 lines down, rather than the default's 39 and 14, as the screen is
+    /// large enough for it to be read, and bold reads better on a reflective screen, so that more fits, e.g. a capture
+    /// device's lines under its clock.
+    fn console(&self) -> Console {
+        Console { font: &embedded_graphics::mono_font::ascii::FONT_9X15_BOLD, margin: 8 }
     }
 
     fn overlay_active(&self) -> bool {

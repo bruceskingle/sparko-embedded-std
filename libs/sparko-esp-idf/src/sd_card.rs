@@ -22,7 +22,7 @@ const MAX_OPEN_FILES: usize = 4;
 const SPEED_KHZ: u32 = 10_000;
 
 /// Mounts the card, returning what must be kept for as long as it is mounted.
-#[cfg(feature = "board-cyd")]
+#[cfg(feature = "board-cyd-esp32-28")]
 pub fn mount(
     spi: esp_idf_hal::spi::SPI3<'static>,
     sclk: esp_idf_hal::gpio::Gpio18<'static>,
@@ -50,7 +50,7 @@ pub fn mount(
 /// Mounts the card of a board whose slot shares the display's SPI bus, bus, with its chip select, cs, returning what
 /// must be kept for as long as it is mounted. The display's device must be on the bus first, so that its chip select is
 /// held high while the card starts.
-#[cfg(feature = "board-wave-esp32c6touch147")]
+#[cfg(feature = "board-wave-esp32c6-touch-147")]
 pub fn mount_shared(
     bus: &'static SpiDriver<'static>,
     cs: esp_idf_hal::gpio::Gpio4<'static>,
@@ -74,7 +74,7 @@ pub fn mount_shared(
 /// Mounts the card of a board whose slot is wired for the SDMMC host, with one data line, as the Waveshare
 /// ESP32-S3-RLCD-4.2's is, on GPIO21 (CMD), 38 (CLK) and 39 (D0), returning what must be kept for as long as it is
 /// mounted.
-#[cfg(feature = "board-waveshare-s3-rlcd42")]
+#[cfg(feature = "board-wave-esp32s3-rlcd-42")]
 pub fn mount_mmc(
     slot: esp_idf_hal::sd::mmc::SDMMC1<'static>,
     cmd: esp_idf_hal::gpio::Gpio21<'static>,

@@ -46,13 +46,13 @@ In a search for an alternative approach I came across the YouTube ```Floodplain`
 This repo contains a number of library crates under the ```libs``` directory and a set of example binary crates under the ```examples``` directory:
 ```
 ├── examples
-│   ├── cyd
-│   ├── devkitv1
-│   ├── supermini-esp32c3
-│   ├── wave-esp32c6147
-│   ├── wave-esp32c6touch147
-│   ├── waveshare-s3-rlcd42
-│   └── xiao-esp32c6
+│   ├── cyd-esp32-28
+│   ├── esp32-devkit-v1
+│   ├── esp32c3-supermini
+│   ├── wave-esp32c6-lcd-147
+│   ├── wave-esp32c6-touch-147
+│   ├── wave-esp32s3-rlcd-42
+│   └── seeed-esp32c6-xiao
 └── libs
     ├── sparko-embedded-std
     │   └── examples
@@ -94,7 +94,7 @@ The following implementations are available which use this crate:
 Example applications for various boards are available at [sparko-embedded-examples](https://github.com/bruceskingle/sparko-embedded-example) on GitHub.
 
 # Features
-This crate uses multiple features to support various different ESP32 boards. There are functional features like ```mono-led``` and ```rgb-led``` which are referenced in the code and which get activated by board level features like ```board-cyd``` and ```board-xiao-esp32c6```. Client crates should normally select exactly one board feature, and any of the optional hardware features (see below) which their board has and which they want to use.
+This crate uses multiple features to support various different ESP32 boards. There are functional features like ```mono-led``` and ```rgb-led``` which are referenced in the code and which get activated by board level features like ```board-cyd-esp32-28``` and ```board-seeed-esp32c6-xiao```. Client crates should normally select exactly one board feature, and any of the optional hardware features (see below) which their board has and which they want to use.
 
 # Board Capabilities
 The platform drives the hardware a board always has itself, such as its display or status LED, and offers the hardware a project may or may not want, because its pins could be used for something else, as optional ```Cargo``` features. Setting one of these features gives that hardware's pins to the platform, so they are no longer in the ```Remainder```, and setting it for a board which does not have that hardware is a compile error.
@@ -143,12 +143,12 @@ The config page, and ```/api/info``` where the API is enabled, say which board t
 
 
 # Development
-In order to avoid compiler errors during development one of the board features should be enabled in VSCode settings (file ```.vscode/settings.json``` in the workspace root) and when building on the command line release mode and one board feature should be selected e.g. ```cargo build --release --features board-cyd```
+In order to avoid compiler errors during development one of the board features should be enabled in VSCode settings (file ```.vscode/settings.json``` in the workspace root) and when building on the command line release mode and one board feature should be selected e.g. ```cargo build --release --features board-cyd-esp32-28```
 
 # Supported Boards
 The following boards are currently supported:
 
-## board-cyd
+## board-cyd-esp32-28
 The so called "Cheap Yellow Display" or more properly the **ESP32-2432S028R** is a 
 development board has become known in the maker community as the “Cheap Yellow Display” or CYD for short. This development board, whose main chip is an ESP32-WROOM-32 module, comes with
 
@@ -161,10 +161,10 @@ development board has become known in the maker community as the “Cheap Yellow
 Useful board information can be found at [Random Nerd Tutorials](https://randomnerdtutorials.com/?s=CYD)
 I have read that there are clones of this board which have slight differences, the one I developed on cam from [Ali Express](https://www.aliexpress.com/item/1005008229897039.html)
 
-## board-xiao-esp32c6
+## board-seeed-esp32c6-xiao
 This is the [Seed Studio XIAO ESP32-C6](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html) board which combines 2.4GHz Wi-Fi 6 (802.11ax), Bluetooth 5(LE), and IEEE 802.15.4 radio connectivity with a C6 processor.
 
-## board-waveshare-s3-rlcd42
+## board-wave-esp32s3-rlcd-42
 This is the [Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s3/esp32-s3-rlcd-4.2.htm), whose ESP32-S3-WROOM-1-N16R8 module has two cores, 16 MB of flash and 8 MB of PSRAM, which the platform adds to the heap. It comes with
 
 - a 4.2-inch reflective LCD, 400 x 300, black and white, with an ST7305 controller, and no backlight: it is lit by the room, like e-paper, and readable in daylight. The outermost row and column of pixels on each edge are hidden by its frame, so the platform offers the 398 x 298 which can be seen. The example's **Edge Test** *Feature* draws a pattern to check this.
@@ -176,4 +176,4 @@ This is the [Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/product/esp3
 - a 2 x 8 pin, 2.54 mm header, with 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. GPIO 1, 2, 3 and 17 are free, in the ```Remainder```. 13 and 14 are the board's I2C bus, which more devices can join, using ```sparko.i2c()```. 0 and 18 are the buttons, 19 and 20 the USB port, and 43 and 44 the console's UART, which the platform keeps
 - a holder for an 18650 lithium battery, with charging, and a PWR button which switches the battery's power. The battery is not supplied: an unprotected 18650, flat or button top, about 65 mm long, fits.
 
-There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example application, in ```boards/waveshare-s3-rlcd42```, plays ```sounds/Startup.wav``` as it starts, and shows an analog clock, the SD card's size and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.
+There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example application, in ```boards/wave-esp32s3-rlcd-42```, plays ```sounds/Startup.wav``` as it starts, and shows an analog clock, the SD card's size and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.

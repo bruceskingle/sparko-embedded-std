@@ -1,11 +1,11 @@
 [package]
-name = "sparko-embedded-std-example-waveshare-s3-rlcd42"
+name = "sparko-embedded-std-example-wave-esp32s3-rlcd-42"
 version = "0.1.0"
 edition = "2024"
 resolver = "2"
 
 [[bin]]
-name = "sparko-embedded-std-example-waveshare-s3-rlcd42"
+name = "sparko-embedded-std-example-wave-esp32s3-rlcd-42"
 harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
 
 [dependencies]
@@ -16,7 +16,7 @@ anyhow = "1.0.102"
 log = "0.4"
 
 sparko-embedded-std = { path = "../../libs/sparko-embedded-std" }
-sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-waveshare-s3-rlcd42", "boot-button", "key-button", "sd-card"]}
+sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-wave-esp32s3-rlcd-42", "boot-button", "key-button", "sd-card"]}
 embedded-graphics = "0.8"
 
 

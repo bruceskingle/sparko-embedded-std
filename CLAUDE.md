@@ -24,12 +24,17 @@ are retired: everything is here.
 
 | Board | Cargo feature | Target | MCU |
 |---|---|---|---|
-| cyd (ESP32-2432S028R, 2.8" 320x240 display, no PSRAM) | `board-cyd` | `xtensa-esp32-espidf` | esp32 |
-| devkitv1 | `board-devkitv1` | `xtensa-esp32-espidf` | esp32 |
-| supermini-esp32c3 | `board-supermini-esp32c3` | `riscv32imc-esp-espidf` | esp32c3 |
-| wave-esp32c6147 | `board-wave-esp32c6147` | `riscv32imac-esp-espidf` | esp32c6 |
-| wave-esp32c6touch147 | `board-wave-esp32c6touch147` (+ `tilt`, `ahrs`) | `riscv32imac-esp-espidf` | esp32c6 |
-| xiao-esp32c6 | `board-xiao-esp32c6` | `riscv32imac-esp-espidf` | esp32c6 |
+| cyd (ESP32-2432S028R, 2.8" 320x240 display, no PSRAM) | `board-cyd-esp32-28` | `xtensa-esp32-espidf` | esp32 |
+| esp32-devkit-v1 | `board-esp32-devkit-v1` | `xtensa-esp32-espidf` | esp32 |
+| esp32c3-supermini | `board-esp32c3-supermini` | `riscv32imc-esp-espidf` | esp32c3 |
+| wave-esp32c6-lcd-147 | `board-wave-esp32c6-lcd-147` | `riscv32imac-esp-espidf` | esp32c6 |
+| wave-esp32c6-touch-147 | `board-wave-esp32c6-touch-147` (+ `tilt`, `ahrs`) | `riscv32imac-esp-espidf` | esp32c6 |
+| seeed-esp32c6-xiao | `board-seeed-esp32c6-xiao` | `riscv32imac-esp-espidf` | esp32c6 |
+| wave-esp32s3-rlcd-42 (4.2" reflective LCD, 8 MB PSRAM) | `board-wave-esp32s3-rlcd-42` | `xtensa-esp32s3-espidf` | esp32s3 |
+
+Board names are the maker, the chip, then the maker's model with its size without the dot, e.g. Waveshare's
+ESP32-S3-RLCD-4.2 is `wave-esp32s3-rlcd-42`; an unbranded board starts with its chip, e.g. `esp32c3-supermini`.
+Capture firmware features in marco-sparko use the same names.
 
 Each board crate selects exactly one `board-*` feature of `sparko-esp-idf`, which turns on the functional features
 (`display`, `rgb-led`, `smart-led-spi`, ...) its hardware has. Code behind a functional feature only compiles for
@@ -52,20 +57,20 @@ This is the model every piece of on-board hardware follows, so that the platform
 - **Only header pins are in the `Remainder`.** A pin which is not on one of the board's headers can never be used for
   anything else, so it never appears in the `Remainder`. On-board hardware all of whose pins are off the headers is
   then simply part of the board: its `board-*` feature enables it by default, rather than it being an optional feature.
-  E.g. the CYD's SD slot (GPIO 5, 18, 19, 23) is wired only to the slot, so `board-cyd` should enable `sd-card`.
+  E.g. the CYD's SD slot (GPIO 5, 18, 19, 23) is wired only to the slot, so `board-cyd-esp32-28` should enable `sd-card`.
 - Pins which are only ever used by always-on hardware, e.g. the display's, are never in the `Remainder`. A pin shared
   between always-on and optional hardware, e.g. an SPI bus the display and the SD slot share, is the platform's; only
   the pins the optional hardware alone uses move between it and the `Remainder`.
 
 ## Building and flashing
 
-- Build a board from its own directory: `cd boards/cyd && cargo build --release`. Always `--release`. Never build the
+- Build a board from its own directory: `cd boards/cyd-esp32-28 && cargo build --release`. Always `--release`. Never build the
   libs on their own or several boards as one workspace: the target and features come from the board.
 - `./build.sh` builds every board in turn (slow).
 - Flash and monitor: `cargo run --release` in the board directory (the runner is `espflash flash --monitor`). Ask
   before flashing: it needs the board plugged in and replaces what is on it.
 - ESP-IDF tools are installed globally (`ESP_IDF_TOOLS_INSTALL_DIR = "global"`, in `~/.espressif`), not per project.
-- The cyd board depends on a local fork at `../../../ws2812-esp32-rmt-driver` (i.e. `~/git/ws2812-esp32-rmt-driver`).
+- The cyd-esp32-28 board depends on a local fork at `../../../ws2812-esp32-rmt-driver` (i.e. `~/git/ws2812-esp32-rmt-driver`).
 
 ## rust-analyzer
 
@@ -79,7 +84,7 @@ own (it gives odd errors).
 Implement `sparko_esp_idf::Feature`: `init` returns a `FeatureDescriptor` (name and `Config::to_config_spec()`), and
 `start` gets the platform, the initializer and the typed config. Do periodic work by adding a `ScheduledTask` with a
 cron spec (seconds field first, e.g. `"0 */5 * * * *"`). Features can live outside the libs, e.g. in a board's
-`main.rs` (see wave-esp32c6touch147). The scheduler runs every task in turn on one thread, so a slow task (e.g. an
+`main.rs` (see wave-esp32c6-touch-147). The scheduler runs every task in turn on one thread, so a slow task (e.g. an
 HTTPS request) delays the others, e.g. the clock.
 
 Config values are stored in NVS and edited on the device's `/config` page, which has no login. Mark passwords and keys

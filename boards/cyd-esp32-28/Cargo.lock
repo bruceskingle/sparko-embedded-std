@@ -1801,7 +1801,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sparko-embedded-std-example-cyd"
+name = "sparko-embedded-std-example-cyd-esp32-28"
 version = "0.1.0"
 dependencies = [
  "anyhow",

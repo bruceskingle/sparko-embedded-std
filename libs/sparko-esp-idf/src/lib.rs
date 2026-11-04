@@ -66,27 +66,27 @@ pub fn reset_reason() -> &'static str {
     }
 }
 
-#[cfg(all(feature = "boot-button", not(feature = "board-waveshare-s3-rlcd42")))]
-compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-waveshare-s3-rlcd42.");
-#[cfg(all(feature = "key-button", not(feature = "board-waveshare-s3-rlcd42")))]
-compile_error!("The key-button feature is for a board with a KEY button: board-waveshare-s3-rlcd42.");
+#[cfg(all(feature = "boot-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
+compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42.");
+#[cfg(all(feature = "key-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
+compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
 
 /// The board this was built for, from its board- feature.
 pub fn board_name() -> &'static str {
-    if cfg!(feature = "board-cyd") {
-        "cyd"
-    } else if cfg!(feature = "board-devkitv1") {
-        "devkitv1"
-    } else if cfg!(feature = "board-supermini-esp32c3") {
-        "supermini-esp32c3"
-    } else if cfg!(feature = "board-wave-esp32c6147") {
-        "wave-esp32c6147"
-    } else if cfg!(feature = "board-wave-esp32c6touch147") {
-        "wave-esp32c6touch147"
-    } else if cfg!(feature = "board-waveshare-s3-rlcd42") {
-        "waveshare-s3-rlcd42"
-    } else if cfg!(feature = "board-xiao-esp32c6") {
-        "xiao-esp32c6"
+    if cfg!(feature = "board-cyd-esp32-28") {
+        "cyd-esp32-28"
+    } else if cfg!(feature = "board-esp32-devkit-v1") {
+        "esp32-devkit-v1"
+    } else if cfg!(feature = "board-esp32c3-supermini") {
+        "esp32c3-supermini"
+    } else if cfg!(feature = "board-wave-esp32c6-lcd-147") {
+        "wave-esp32c6-lcd-147"
+    } else if cfg!(feature = "board-wave-esp32c6-touch-147") {
+        "wave-esp32c6-touch-147"
+    } else if cfg!(feature = "board-wave-esp32s3-rlcd-42") {
+        "wave-esp32s3-rlcd-42"
+    } else if cfg!(feature = "board-seeed-esp32c6-xiao") {
+        "seeed-esp32c6-xiao"
     } else {
         "unknown"
     }

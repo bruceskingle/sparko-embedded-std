@@ -1,11 +1,11 @@
 [package]
-name = "sparko-embedded-std-example-wave-esp32c6147"
+name = "sparko-embedded-std-example-wave-esp32c6-lcd-147"
 version = "0.1.0"
 edition = "2024"
 resolver = "2"
 
 [[bin]]
-name = "sparko-embedded-std-example-wave-esp32c6147"
+name = "sparko-embedded-std-example-wave-esp32c6-lcd-147"
 harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
 
 [dependencies]
@@ -16,7 +16,7 @@ chrono = "0.4.44"
 embedded-graphics = "0.8"
 
 sparko-embedded-std = { path = "../../libs/sparko-embedded-std" }
-sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-wave-esp32c6147"]}
+sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-wave-esp32c6-lcd-147"]}
 
 
 

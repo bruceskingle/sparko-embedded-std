@@ -1,11 +1,11 @@
 [package]
-name = "sparko-embedded-std-example-devkitv1"
+name = "sparko-embedded-std-example-seeed-esp32c6-xiao"
 version = "0.1.0"
 edition = "2024"
 resolver = "2"
 
 [[bin]]
-name = "sparko-embedded-std-example-devkitv1"
+name = "sparko-embedded-std-example-seeed-esp32c6-xiao"
 harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
 
 [dependencies]
@@ -15,7 +15,7 @@ esp-idf-sys = { version = "0.37.2"}
 anyhow = "1.0.102"
 
 sparko-embedded-std = { path = "../../libs/sparko-embedded-std" }
-sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-devkitv1"]}
+sparko-esp-idf = { path = "../../libs/sparko-esp-idf", features = ["board-seeed-esp32c6-xiao"]}
 
 
 [build-dependencies]

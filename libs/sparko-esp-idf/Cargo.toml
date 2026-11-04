@@ -45,7 +45,7 @@ sparko-embedded-std = { path = "../sparko-embedded-std"}
 
 [features]
 default = ["espidf"]
-#default = ["espidf", "board-xiao-esp32c6"]
+#default = ["espidf", "board-seeed-esp32c6-xiao"]
 #espidf = ["esp-idf-svc", "embassy-time", "embedded-svc", "esp-idf-hal", "esp-idf-sys", "futures", "embuild"]
 espidf = [
   "esp-idf-svc",
@@ -77,20 +77,20 @@ shtc3 = ["i2c"]  # The SHTC3 temperature and humidity sensor on the board's I2C 
 AXS5106L = ["touch-driver"]
 
 # board features, clients should select exactly one of these to target the board in use
-board-cyd = ["rgb-led", "mipi-dsi-display", "smart-led-spi"]
-board-wave-esp32c6touch147 = ["mipi-dsi-display", "mipi-dsi-display-reset", "qmi8658", "AXS5106L"] # seems to work with the ST7789 driver. , "display-jd9853"
-board-wave-esp32c6147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
-board-xiao-esp32c6 = ["mono-led"]
-board-devkitv1 = ["mono-led", "smart-led-spi"]
-board-supermini-esp32c3 = ["mono-led", "smart-led-spi"]
-board-waveshare-s3-rlcd42 = ["display-st7305", "shtc3", "speaker"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311.
+board-cyd-esp32-28 = ["rgb-led", "mipi-dsi-display", "smart-led-spi"]
+board-wave-esp32c6-touch-147 = ["mipi-dsi-display", "mipi-dsi-display-reset", "qmi8658", "AXS5106L"] # seems to work with the ST7789 driver. , "display-jd9853"
+board-wave-esp32c6-lcd-147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
+board-seeed-esp32c6-xiao = ["mono-led"]
+board-esp32-devkit-v1 = ["mono-led", "smart-led-spi"]
+board-esp32c3-supermini = ["mono-led", "smart-led-spi"]
+board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311.
 
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
 ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
-boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-waveshare-s3-rlcd42).
-key-button = []                         # The board's KEY button, GPIO18 on board-waveshare-s3-rlcd42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-waveshare-s3-rlcd42).
-sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6touch147), which are then not in the Remainder. Board must have one (board-cyd, board-wave-esp32c6touch147, board-waveshare-s3-rlcd42, which has it on SDMMC: GPIO21, 38, 39).
+boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42).
+key-button = []                         # The board's KEY button, GPIO18 on board-wave-esp32s3-rlcd-42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-wave-esp32s3-rlcd-42).
+sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39).
 tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 

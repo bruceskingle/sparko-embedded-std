@@ -21,34 +21,34 @@
 			"path": "libs/sparko-esp-idf"
 		},
 		{
-			"name": "devkitv1",
-			"path": "boards/devkitv1"
+			"name": "esp32-devkit-v1",
+			"path": "boards/esp32-devkit-v1"
 		},
 		{
-			"name": "cyd",
-			"path": "boards/cyd"
+			"name": "cyd-esp32-28",
+			"path": "boards/cyd-esp32-28"
 		},
 		{
-			"name": "supermini-esp32c3",
-			"path": "boards/supermini-esp32c3"
+			"name": "esp32c3-supermini",
+			"path": "boards/esp32c3-supermini"
 		},
 		{
-			"name": "wave-esp32c6touch147",
-			"path": "boards/wave-esp32c6touch147"
+			"name": "wave-esp32c6-touch-147",
+			"path": "boards/wave-esp32c6-touch-147"
 		},
 		{
-			"name": "wave-esp32c6147",
-			"path": "boards/wave-esp32c6147"
+			"name": "wave-esp32c6-lcd-147",
+			"path": "boards/wave-esp32c6-lcd-147"
 		},
 		{
-			"name": "xiao-esp32c6",
-			"path": "boards/xiao-esp32c6"
+			"name": "seeed-esp32c6-xiao",
+			"path": "boards/seeed-esp32c6-xiao"
 		},
 		{
 			"path": "../../.marco-sparko-cache"
 		},
 		{
-			"path": "boards/waveshare-s3-rlcd42"
+			"path": "boards/wave-esp32s3-rlcd-42"
 		},
 		{
 			"path": "../bruce-db"
@@ -63,35 +63,35 @@
 			// "target": true
 		},
 		"rust-analyzer.linkedProjects": [
-			// "boards/wave-esp32c6touch147/Cargo.toml",
-			// "boards/cyd/Cargo.toml",
-			"boards/devkitv1/Cargo.toml",
-			// "boards/supermini-esp32c3/Cargo.toml",
-			// "boards/wave-esp32c6147/Cargo.toml",
-			// "boards/wave-esp32c6touch147/Cargo.toml",
-			// "boards/xiao-esp32c6/Cargo.toml",
+			// "boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "boards/cyd-esp32-28/Cargo.toml",
+			"boards/esp32-devkit-v1/Cargo.toml",
+			// "boards/esp32c3-supermini/Cargo.toml",
+			// "boards/wave-esp32c6-lcd-147/Cargo.toml",
+			// "boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "boards/seeed-esp32c6-xiao/Cargo.toml",
 			"libs/sparko-embedded-std/Cargo.toml", // This is needed
 			"../marco-sparko/Cargo.toml",
 			// "libs/sparko-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",
-		// // "rust-analyzer.cargo.features": ["board-xiao-esp32c6"],
-		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6touch147", "tilt", "ahrs", "touch"],
-		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6147"],
+		// // "rust-analyzer.cargo.features": ["board-seeed-esp32c6-xiao"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6-touch-147", "tilt", "ahrs", "touch"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6-lcd-147"],
 		// // "rust-analyzer.cargo.target": "riscv32imac-esp-espidf",
 		// // "rust-analyzer.cargo.extraEnv": {
 		// // "MCU": "esp32c6"
 		// // },
 		// "rust-analyzer.cargo.features": [
-		// 	// "board-cyd"
-		// 	"board-devkitv1"
+		// 	// "board-cyd-esp32-28"
+		// 	"board-esp32-devkit-v1"
 		// ],
-		// // "rust-analyzer.cargo.features": ["board-devkitv1"],
+		// // "rust-analyzer.cargo.features": ["board-esp32-devkit-v1"],
 		// "rust-analyzer.cargo.target": "xtensa-esp32-espidf",
 		// "rust-analyzer.cargo.extraEnv": {
 		// 	"MCU": "esp32"
 		// },
-		// // "rust-analyzer.cargo.features": ["board-supermini-esp32c3"],
+		// // "rust-analyzer.cargo.features": ["board-esp32c3-supermini"],
 		// // "rust-analyzer.cargo.target": "riscv32imc-esp-espidf",
 		// // "rust-analyzer.cargo.extraEnv": {
 		// // "MCU": "esp32c3"

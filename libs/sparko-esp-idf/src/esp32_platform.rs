@@ -39,11 +39,11 @@ use crate::led::mono_led::MonoLedManager;
 use crate::led::rgb_led::RgbLedManager;
 #[cfg(feature = "simple-led")]
 use crate::led::simple_led::SimpleLedManager;
-#[cfg(feature = "board-supermini-esp32c3")]
+#[cfg(feature = "board-esp32c3-supermini")]
 use esp_idf_hal::gpio::AnyIOPin;
 #[cfg(feature = "mipi-dsi-display")]
 use esp_idf_hal::gpio::{Output, PinDriver};
-#[cfg(feature = "board-supermini-esp32c3")]
+#[cfg(feature = "board-esp32c3-supermini")]
 use esp_idf_hal::spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 #[cfg(feature = "mipi-dsi-display")]
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
@@ -184,7 +184,7 @@ pub struct Remainder {
 
 */
 
-#[cfg(feature = "board-cyd")]
+#[cfg(feature = "board-cyd-esp32-28")]
 pub struct Remainder {
     pub gpio22: esp_idf_hal::gpio::Gpio22<'static>,
     pub gpio27: esp_idf_hal::gpio::Gpio27<'static>,
@@ -200,7 +200,7 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
-#[cfg(feature = "board-wave-esp32c6147")]
+#[cfg(feature = "board-wave-esp32c6-lcd-147")]
 pub struct Remainder {
     pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
     pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
@@ -224,7 +224,7 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
-#[cfg(feature = "board-wave-esp32c6touch147")]
+#[cfg(feature = "board-wave-esp32c6-touch-147")]
 pub struct Remainder {
     // pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
     // pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
@@ -279,7 +279,7 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
-#[cfg(feature = "board-xiao-esp32c6")]
+#[cfg(feature = "board-seeed-esp32c6-xiao")]
 pub struct Remainder {
     pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
     pub gpio21: esp_idf_hal::gpio::Gpio21<'static>,
@@ -299,7 +299,7 @@ pub struct Remainder {
 /// can join, see Esp32Platform::i2c. 19 and 20 are the USB port, flashed and logged over, and 43 and 44 UART0, the
 /// console, so the platform keeps them. 3 is a strapping pin, read as the chip starts, so it should not be pulled low
 /// then.
-#[cfg(feature = "board-waveshare-s3-rlcd42")]
+#[cfg(feature = "board-wave-esp32s3-rlcd-42")]
 pub struct Remainder {
     pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
     pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
@@ -312,7 +312,7 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
-#[cfg(feature = "board-devkitv1")]
+#[cfg(feature = "board-esp32-devkit-v1")]
 pub struct Remainder {
     pub gpio4: esp_idf_hal::gpio::Gpio4<'static>,
     pub gpio13: esp_idf_hal::gpio::Gpio13<'static>,
@@ -335,7 +335,7 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
-#[cfg(feature = "board-supermini-esp32c3")]
+#[cfg(feature = "board-esp32c3-supermini")]
 pub struct Remainder {
     pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
     pub gpio1: esp_idf_hal::gpio::Gpio1<'static>,
@@ -375,7 +375,7 @@ pub struct Esp32PlatformBuilder {
     modem: esp_idf_hal::modem::Modem<'static>,
     firmware: crate::Firmware,
     /// The BOOT button, on-board hardware, which releases an adopted device, see adoption::watch_boot_button.
-    #[cfg(feature = "board-cyd")]
+    #[cfg(feature = "board-cyd-esp32-28")]
     boot_button: esp_idf_hal::gpio::Gpio0<'static>,
     /// What must be kept for the card to stay mounted, or why it could not be, see sd_card.rs.
     #[cfg(feature = "sd-card")]
@@ -471,20 +471,20 @@ impl Esp32PlatformBuilder {
             peripherals.pins.gpio17,
         )?;
 
-        #[cfg(feature = "board-xiao-esp32c6")]
+        #[cfg(feature = "board-seeed-esp32c6-xiao")]
         let led_manager = MonoLedManager::new(true, peripherals.pins.gpio15)?;
-        #[cfg(feature = "board-devkitv1")]
+        #[cfg(feature = "board-esp32-devkit-v1")]
         let led_manager = MonoLedManager::new(false, peripherals.pins.gpio2)?;
-        #[cfg(feature = "board-supermini-esp32c3")]
+        #[cfg(feature = "board-esp32c3-supermini")]
         let led_manager = MonoLedManager::new(false, peripherals.pins.gpio8)?;
 
         #[cfg(feature = "led")]
         led_manager.set_status(&Status::Initializing(InitStatus::Starting))?;
 
-        #[cfg(feature = "board-cyd")]
+        #[cfg(feature = "board-cyd-esp32-28")]
         let boot_button = peripherals.pins.gpio0;
         // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
-        #[cfg(all(feature = "board-cyd", feature = "sd-card"))]
+        #[cfg(all(feature = "board-cyd-esp32-28", feature = "sd-card"))]
         let sd_card = crate::sd_card::mount(
             peripherals.spi3,
             peripherals.pins.gpio18,
@@ -496,7 +496,7 @@ impl Esp32PlatformBuilder {
             log::warn!("No SD card: {error:#}");
             format!("{error:#}")
         });
-        #[cfg(feature = "board-cyd")]
+        #[cfg(feature = "board-cyd-esp32-28")]
         let (remainder, spi, dc, back_light) = {
             use esp_idf_hal::{
                 gpio::PinDriver,
@@ -533,7 +533,7 @@ impl Esp32PlatformBuilder {
             (remainder, spi, dc, back_light)
         };
 
-        #[cfg(feature = "board-wave-esp32c6147")]
+        #[cfg(feature = "board-wave-esp32c6-lcd-147")]
         let (remainder, spi, dc, back_light, reset) = {
             use embedded_graphics::prelude::Size;
             use esp_idf_hal::{
@@ -579,9 +579,9 @@ impl Esp32PlatformBuilder {
             (remainder, spi, dc, back_light, reset)
         };
 
-        #[cfg(all(feature = "board-wave-esp32c6touch147", feature = "sd-card"))]
+        #[cfg(all(feature = "board-wave-esp32c6-touch-147", feature = "sd-card"))]
         let sd_card;
-        #[cfg(feature = "board-wave-esp32c6touch147")]
+        #[cfg(feature = "board-wave-esp32c6-touch-147")]
         let (remainder, spi, dc, back_light, reset, i2c, touch_driver_factory) = {
             use esp_idf_hal::{
                 gpio::PinDriver,
@@ -656,7 +656,7 @@ impl Esp32PlatformBuilder {
             )
         };
 
-        #[cfg(feature = "board-devkitv1")]
+        #[cfg(feature = "board-esp32-devkit-v1")]
         let remainder = Remainder {
             gpio4: peripherals.pins.gpio4,
             gpio13: peripherals.pins.gpio13,
@@ -684,7 +684,7 @@ impl Esp32PlatformBuilder {
         #[cfg(feature = "boot-button")]
         let boot_push_button = crate::push_button::PushButton::new("BOOT", peripherals.pins.gpio0)?;
         // The bus of the board's RTC, temperature and humidity sensor and audio codec.
-        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
         let i2c = {
             use esp_idf_hal::{i2c::{I2cConfig, I2cDriver}, units::Hertz};
             Arc::new(Mutex::new(I2cDriver::new(
@@ -696,7 +696,7 @@ impl Esp32PlatformBuilder {
         };
         // The ES8311 codec, on that bus, given audio over I2S on MCLK 16, BCLK 9, WS 45 and DOUT 8, and its amplifier,
         // enabled by GPIO46. The microphones' ADC, the ES7210, on DIN 10, is not driven yet.
-        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
         let speaker = {
             use esp_idf_hal::{
                 gpio::PinDriver,
@@ -723,13 +723,13 @@ impl Esp32PlatformBuilder {
             crate::speaker::Speaker::new(i2c.clone(), i2s, PinDriver::output(peripherals.pins.gpio46)?)?
         };
         // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
-        #[cfg(all(feature = "board-waveshare-s3-rlcd42", feature = "sd-card"))]
+        #[cfg(all(feature = "board-wave-esp32s3-rlcd-42", feature = "sd-card"))]
         let sd_card = crate::sd_card::mount_mmc(peripherals.sdmmc1, peripherals.pins.gpio21, peripherals.pins.gpio38, peripherals.pins.gpio39)
             .map_err(|error| {
                 log::warn!("No SD card: {error:#}");
                 format!("{error:#}")
             });
-        #[cfg(feature = "board-waveshare-s3-rlcd42")]
+        #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
         let (remainder, st7305) = {
             use esp_idf_hal::{
                 gpio::{AnyIOPin, PinDriver},
@@ -762,7 +762,7 @@ impl Esp32PlatformBuilder {
             (remainder, st7305)
         };
 
-        #[cfg(feature = "board-xiao-esp32c6")]
+        #[cfg(feature = "board-seeed-esp32c6-xiao")]
         let remainder = {
             let remainder = Remainder {
                 gpio2: peripherals.pins.gpio2,
@@ -774,7 +774,7 @@ impl Esp32PlatformBuilder {
             remainder
         };
 
-        #[cfg(feature = "board-supermini-esp32c3")]
+        #[cfg(feature = "board-esp32c3-supermini")]
         let remainder = {
             use esp_idf_hal::{
                 gpio::AnyIOPin,
@@ -816,7 +816,7 @@ impl Esp32PlatformBuilder {
             wifi_sender,
             modem,
             firmware: crate::Firmware { name: "unknown", version: "unknown" },
-            #[cfg(feature = "board-cyd")]
+            #[cfg(feature = "board-cyd-esp32-28")]
             boot_button,
             #[cfg(feature = "sd-card")]
             sd_card,
@@ -959,7 +959,7 @@ impl Esp32PlatformBuilder {
         #[cfg(feature = "touch-driver")]
         let mut touch_driver;
 
-        #[cfg(feature = "board-cyd")]
+        #[cfg(feature = "board-cyd-esp32-28")]
         {
             use embedded_graphics::prelude::Size;
             use esp_idf_hal::{
@@ -1030,7 +1030,7 @@ impl Esp32PlatformBuilder {
             };
         }
 
-        #[cfg(feature = "board-wave-esp32c6147")]
+        #[cfg(feature = "board-wave-esp32c6-lcd-147")]
         {
             use embedded_graphics::prelude::Size;
             use esp_idf_hal::{
@@ -1100,7 +1100,7 @@ impl Esp32PlatformBuilder {
             };
         }
 
-        #[cfg(feature = "board-wave-esp32c6touch147")]
+        #[cfg(feature = "board-wave-esp32c6-touch-147")]
         {
             use crate::ahrs::qmi8658::Qmi8658;
             use esp_idf_hal::delay::Ets;
@@ -1213,7 +1213,7 @@ impl Esp32PlatformBuilder {
 
         #[cfg(esp_idf_esp_https_server_enable)]
         let adoption = crate::adoption::Adoption::load(&self.nvs_partition, config_manager.clone())?;
-        #[cfg(all(esp_idf_esp_https_server_enable, feature = "board-cyd"))]
+        #[cfg(all(esp_idf_esp_https_server_enable, feature = "board-cyd-esp32-28"))]
         crate::adoption::watch_boot_button(adoption.clone(), self.boot_button)?;
         ConfigManager::create_pages(&config_manager, &mut server_manager)?;
         #[cfg(feature = "speaker")]

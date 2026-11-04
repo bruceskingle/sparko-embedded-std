@@ -5,7 +5,7 @@ use esp_idf_hal::{
 };
 use sparko_embedded_std::graphics::{Color, DisplayManager};
 
-#[cfg(feature = "board-cyd")]
+#[cfg(feature = "board-cyd-esp32-28")]
 use crate::display::mipi_dsi_display_manager;
 use crate::{rgb565_from_rgb8, to_rgb565};
 
@@ -144,16 +144,16 @@ pub struct MipiDsiDisplayManager {
     /// See DisplayManager::overlay_active and generation.
     pub overlay: bool,
     pub generation: u32,
-    #[cfg(feature = "board-cyd")]
+    #[cfg(feature = "board-cyd-esp32-28")]
     pub display: mipidsi::Display<EspDi, mipidsi::models::ILI9341Rgb565, mipidsi::NoResetPin>,
-    #[cfg(feature = "board-wave-esp32c6touch147")]
+    #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // pub display: mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>,
     pub display: mipidsi::Display<
         EspDi,
         mipidsi::models::ST7789,
         PinDriver<'static, esp_idf_hal::gpio::Output>,
     >,
-    #[cfg(feature = "board-wave-esp32c6147")]
+    #[cfg(feature = "board-wave-esp32c6-lcd-147")]
     pub display: mipidsi::Display<
         EspDi,
         mipidsi::models::ST7789,
@@ -164,16 +164,16 @@ pub struct MipiDsiDisplayManager {
 impl MipiDsiDisplayManager {}
 
 impl DisplayManager for MipiDsiDisplayManager {
-    #[cfg(feature = "board-cyd")]
+    #[cfg(feature = "board-cyd-esp32-28")]
     type Display = mipidsi::Display<EspDi, mipidsi::models::ILI9341Rgb565, mipidsi::NoResetPin>;
-    #[cfg(feature = "board-wave-esp32c6touch147")]
+    #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // type Display = mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>;
     type Display = mipidsi::Display<
         EspDi,
         mipidsi::models::ST7789,
         PinDriver<'static, esp_idf_hal::gpio::Output>,
     >;
-    #[cfg(feature = "board-wave-esp32c6147")]
+    #[cfg(feature = "board-wave-esp32c6-lcd-147")]
     type Display = mipidsi::Display<
         EspDi,
         mipidsi::models::ST7789,

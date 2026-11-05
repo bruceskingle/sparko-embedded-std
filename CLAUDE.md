@@ -133,5 +133,8 @@ tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; chan
 ## Working with the owner
 
 - Never commit, push or offer to: the owner reviews and commits.
-- This repo is developed alongside `../marco-sparko`, a desktop app which will read data from ESP32 "Capture Devices"
-  built on this platform; Claude's project memory for both lives with marco-sparko.
+- This repo is developed alongside `../marco-sparko`, a desktop app which reads data from ESP32 "Capture Devices"
+  built on this platform, whose firmware is in marco-sparko's `capture/`. Claude's memory of each repo is kept with it,
+  and marco-sparko's, the workspace's, lists this one's too.
+- The device pages' look, `libs/sparko-embedded-std/src/http_server.rs`, is just what could be written by hand; the
+  owner would prefer a dark theme, when they are redesigned, which is not planned yet.

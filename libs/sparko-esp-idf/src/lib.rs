@@ -16,6 +16,8 @@ pub mod api;
 pub mod sd_card;
 #[cfg(feature = "shtc3")]
 pub mod shtc3;
+#[cfg(feature = "battery")]
+pub mod battery;
 pub mod push_button;
 #[cfg(feature = "speaker")]
 pub mod speaker;

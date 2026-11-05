@@ -292,7 +292,7 @@ pub struct Remainder {
 
 /// The Waveshare ESP32-S3-RLCD-4.2, whose on-board hardware uses most of its pins: the display (GPIO5, 6, 11, 12, 40,
 /// 41), the SD card (21, 38, 39), the I2C bus of the RTC, sensor and audio codec (13, 14), the speaker's I2S and
-/// amplifier (8, 9, 16, 45, 46), and BOOT (0).
+/// amplifier (8, 9, 16, 45, 46), the battery's voltage (4), and BOOT (0).
 ///
 /// Its 16-pin header brings out 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. Of
 /// these, 1, 2, 3 and 17 are free, and here; 0 and 18 are the buttons, and 13 and 14 the I2C bus, which more devices
@@ -380,6 +380,9 @@ pub struct Esp32PlatformBuilder {
     /// What must be kept for the card to stay mounted, or why it could not be, see sd_card.rs.
     #[cfg(feature = "sd-card")]
     sd_card: Result<Box<dyn std::any::Any>, String>,
+    /// The board's battery, see battery.rs, None if its ADC could not be set up.
+    #[cfg(feature = "battery")]
+    battery: Option<Arc<crate::battery::Battery>>,
     #[cfg(feature = "display")]
     orientation: DisplayOrientation,
     #[cfg(feature = "rgb-led")]
@@ -722,6 +725,13 @@ impl Esp32PlatformBuilder {
             )?;
             crate::speaker::Speaker::new(i2c.clone(), i2s, PinDriver::output(peripherals.pins.gpio46)?)?
         };
+        // The 18650 cell's voltage, a third of it, on GPIO4, see battery.rs. A failure to set up the ADC is logged rather
+        // than stopping the board, as it can run without knowing.
+        #[cfg(all(feature = "board-wave-esp32s3-rlcd-42", feature = "battery"))]
+        let battery = crate::battery::Battery::new(peripherals.adc1, peripherals.pins.gpio4)
+            .map_err(|error| log::warn!("Unable to read the battery: {error:#}"))
+            .ok()
+            .map(Arc::new);
         // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
         #[cfg(all(feature = "board-wave-esp32s3-rlcd-42", feature = "sd-card"))]
         let sd_card = crate::sd_card::mount_mmc(peripherals.sdmmc1, peripherals.pins.gpio21, peripherals.pins.gpio38, peripherals.pins.gpio39)
@@ -820,6 +830,8 @@ impl Esp32PlatformBuilder {
             boot_button,
             #[cfg(feature = "sd-card")]
             sd_card,
+            #[cfg(feature = "battery")]
+            battery,
             #[cfg(feature = "display")]
             orientation: DisplayOrientation::Rotate0,
 
@@ -1299,6 +1311,8 @@ impl Esp32PlatformBuilder {
                 adoption,
                 #[cfg(feature = "sd-card")]
                 sd_card: self.sd_card,
+                #[cfg(feature = "battery")]
+                battery: self.battery,
                 #[cfg(feature = "display")]
                 display_manager,
                 #[cfg(feature = "i2c")]
@@ -1370,6 +1384,9 @@ pub struct Esp32Platform {
     adoption: Arc<crate::adoption::Adoption>,
     #[cfg(feature = "sd-card")]
     sd_card: Result<Box<dyn std::any::Any>, String>,
+    /// The board's battery, see battery.rs, None if its ADC could not be set up.
+    #[cfg(feature = "battery")]
+    battery: Option<Arc<crate::battery::Battery>>,
 
     #[cfg(feature = "display")]
     pub display_manager: Arc<Mutex<crate::display::BoardDisplayManager>>,
@@ -1433,6 +1450,12 @@ impl Esp32Platform {
     #[cfg(feature = "i2c")]
     pub fn i2c(&self) -> Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>> {
         self.i2c.clone()
+    }
+
+    /// The board's battery, see battery.rs, None if its ADC could not be set up.
+    #[cfg(feature = "battery")]
+    pub fn battery(&self) -> Option<Arc<crate::battery::Battery>> {
+        self.battery.clone()
     }
 
     /// The board's temperature and humidity sensor, see shtc3.rs.

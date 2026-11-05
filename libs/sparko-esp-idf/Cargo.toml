@@ -73,6 +73,7 @@ imu = []
 touch-driver = []
 qmi8658 = ["imu", "i2c"]
 speaker = ["i2c"]  # The board's speaker: an ES8311 codec on its I2C bus, I2S and an amplifier, see speaker.rs and Esp32Platform::speaker
+battery = []     # The board's battery's voltage, on an ADC pin, see battery.rs and Esp32Platform::battery. Board must have one (board-wave-esp32s3-rlcd-42, GPIO4).
 shtc3 = ["i2c"]  # The SHTC3 temperature and humidity sensor on the board's I2C bus, see shtc3.rs and Esp32Platform::shtc3
 AXS5106L = ["touch-driver"]
 
@@ -83,7 +84,7 @@ board-wave-esp32c6-lcd-147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
 board-seeed-esp32c6-xiao = ["mono-led"]
 board-esp32-devkit-v1 = ["mono-led", "smart-led-spi"]
 board-esp32c3-supermini = ["mono-led", "smart-led-spi"]
-board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311.
+board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker", "battery"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311, 18650 holder.
 
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.

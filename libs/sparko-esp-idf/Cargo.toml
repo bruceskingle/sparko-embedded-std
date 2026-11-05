@@ -64,6 +64,7 @@ rgb-led = ["led"]
 display = []
 smart-led-spi = []  # Device does not support DMA acces via RMT (or has no RMT if ever there is such a board) and therefore requires the SPI implementation
 display-jd9853 =[]
+display-axs15231b = ["display"]  # The AXS15231B QSPI LCD, drawn on in a framebuffer, see display/axs15231b.rs
 display-st7305 = ["display", "mono-display"]  # The ST7305 reflective LCD, drawn on in a framebuffer, see display/st7305.rs
 mono-display = []             # The display is black and white, so features offer no colour settings, e.g. AnalogClock
 mipi-dsi-display = ["display", "mipidsi"]
@@ -76,6 +77,7 @@ speaker = ["i2c"]  # The board's speaker: an ES8311 codec on its I2C bus, I2S an
 battery = []     # The board's battery's voltage, on an ADC pin, see battery.rs and Esp32Platform::battery. Board must have one (board-wave-esp32s3-rlcd-42, GPIO4).
 shtc3 = ["i2c"]  # The SHTC3 temperature and humidity sensor on the board's I2C bus, see shtc3.rs and Esp32Platform::shtc3
 AXS5106L = ["touch-driver"]
+touch-axs15231b = ["touch-driver"]  # The AXS15231B's touch, read over its own I2C bus, see touch/axs15231b.rs
 
 # board features, clients should select exactly one of these to target the board in use
 board-cyd-esp32-28 = ["rgb-led", "mipi-dsi-display", "smart-led-spi"]
@@ -84,14 +86,15 @@ board-wave-esp32c6-lcd-147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
 board-seeed-esp32c6-xiao = ["mono-led"]
 board-esp32-devkit-v1 = ["mono-led", "smart-led-spi"]
 board-esp32c3-supermini = ["mono-led", "smart-led-spi"]
+board-guition-jc3248w535c = ["display-axs15231b", "touch-axs15231b"] # Guition JC3248W535C: ESP32-S3 N16R8, 3.5" 320x480 AXS15231B QSPI LCD with touch, SD slot on SPI.
 board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker", "battery"] # Waveshare ESP32-S3-RLCD-4.2: ESP32-S3 N16R8, 4.2" ST7305 reflective LCD, SDMMC slot, PCF85063, SHTC3, ES8311, 18650 holder.
 
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
 ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
-boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42).
+boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c).
 key-button = []                         # The board's KEY button, GPIO18 on board-wave-esp32s3-rlcd-42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-wave-esp32s3-rlcd-42).
-sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39).
+sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39, board-guition-jc3248w535c, SPI3: GPIO10, 11, 12, 13).
 tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 

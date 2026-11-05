@@ -68,8 +68,8 @@ pub fn reset_reason() -> &'static str {
     }
 }
 
-#[cfg(all(feature = "boot-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
-compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42.");
+#[cfg(all(feature = "boot-button", not(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-guition-jc3248w535c"))))]
+compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c.");
 #[cfg(all(feature = "key-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
 compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
 
@@ -87,6 +87,8 @@ pub fn board_name() -> &'static str {
         "wave-esp32c6-touch-147"
     } else if cfg!(feature = "board-wave-esp32s3-rlcd-42") {
         "wave-esp32s3-rlcd-42"
+    } else if cfg!(feature = "board-guition-jc3248w535c") {
+        "guition-jc3248w535c"
     } else if cfg!(feature = "board-seeed-esp32c6-xiao") {
         "seeed-esp32c6-xiao"
     } else {

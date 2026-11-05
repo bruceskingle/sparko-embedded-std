@@ -71,6 +71,32 @@ pub fn mount_shared(
     Ok(Box::new(mounted))
 }
 
+/// Mounts the card of the Guition JC3248W535C, whose slot is on its own SPI bus, SPI3, on GPIO12 (CLK), 11 (MOSI), 13
+/// (MISO) and 10 (CS), returning what must be kept for as long as it is mounted.
+#[cfg(feature = "board-guition-jc3248w535c")]
+pub fn mount_spi3(
+    spi: esp_idf_hal::spi::SPI3<'static>,
+    sclk: esp_idf_hal::gpio::Gpio12<'static>,
+    mosi: esp_idf_hal::gpio::Gpio11<'static>,
+    miso: esp_idf_hal::gpio::Gpio13<'static>,
+    cs: esp_idf_hal::gpio::Gpio10<'static>,
+) -> anyhow::Result<Box<dyn Any>> {
+    let spi_driver = SpiDriver::new(spi, sclk, mosi, Some(miso), &SpiDriverConfig::default().dma(Dma::Auto(4096)))?;
+    // As on the CYD, see mount, the ESP32's own pull-ups, in case the board has none.
+    for pin in [10, 11, 12, 13] {
+        unsafe { esp_idf_sys::gpio_set_pull_mode(pin, esp_idf_sys::gpio_pull_mode_t_GPIO_PULLUP_ONLY) };
+    }
+    let mut config = SdCardConfiguration::new();
+    config.speed_khz = SPEED_KHZ;
+    let card = SdCardDriver::new_spi(
+        SdSpiHostDriver::new(spi_driver, Some(cs), AnyIOPin::none(), AnyIOPin::none(), AnyIOPin::none(), None)?,
+        &config,
+    )?;
+    let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
+    info!("SD card mounted at {MOUNT_POINT}");
+    Ok(Box::new(mounted))
+}
+
 /// Mounts the card of a board whose slot is wired for the SDMMC host, with one data line, as the Waveshare
 /// ESP32-S3-RLCD-4.2's is, on GPIO21 (CMD), 38 (CLK) and 39 (D0), returning what must be kept for as long as it is
 /// mounted.

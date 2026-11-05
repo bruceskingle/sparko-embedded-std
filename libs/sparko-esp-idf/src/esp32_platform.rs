@@ -53,8 +53,10 @@ use sparko_embedded_std::{DisplayOrientation, graphics::DisplayManager};
 #[cfg(feature = "led")]
 use crate::led::LedManager;
 
-#[cfg(feature = "touch-driver")]
+#[cfg(feature = "AXS5106L")]
 use crate::touch::axs5106l::{TouchDriver, TouchDriverFactory};
+#[cfg(feature = "touch-axs15231b")]
+use crate::touch::axs15231b::TouchDriver;
 
 fn list_nvs_keys() {
     info!("Listing NVS keys:");
@@ -138,7 +140,6 @@ pub struct Remainder {
     pub gpio5: esp_idf_hal::gpio::Gpio5<'static>,
     pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
     pub gpio7: esp_idf_hal::gpio::Gpio7<'static>,
-    pub gpio8: esp_idf_hal::gpio::Gpio8<'static>,
     pub gpio9: esp_idf_hal::gpio::Gpio9<'static>,
 
 
@@ -236,7 +237,6 @@ pub struct Remainder {
     pub gpio5: esp_idf_hal::gpio::Gpio5<'static>,
     pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
     pub gpio7: esp_idf_hal::gpio::Gpio7<'static>,
-    pub gpio8: esp_idf_hal::gpio::Gpio8<'static>,
     pub gpio9: esp_idf_hal::gpio::Gpio9<'static>,
 
     // pub gpio10: esp_idf_hal::gpio::Gpio10<'static>,
@@ -309,6 +309,26 @@ pub struct Remainder {
     /// wires it, see Esp32PlatformBuilder::with_key_button.
     #[cfg(not(feature = "key-button"))]
     pub gpio18: esp_idf_hal::gpio::Gpio18<'static>,
+    pub rmt: esp_idf_hal::rmt::RMT,
+}
+
+/// The Guition JC3248W535C, whose on-board hardware uses: the display's QSPI bus (GPIO21, 39, 40, 45, 47, 48, TE on
+/// 38) and backlight (1), the SD card (10, 11, 12, 13), the I2S amplifier (2, 41, 42), and BOOT (0). Its touch, on
+/// I2C (4 SDA, 8 SCL), on I2C0, see touch/axs15231b.rs. Its headers bring out GPIO5, 6,
+/// 7, 9, 14, 15, 16, 17, 18 and 46; 5 also reads the battery's voltage, through a divider, when one is fitted. 46 is a
+/// strapping pin, read as the chip starts.
+#[cfg(feature = "board-guition-jc3248w535c")]
+pub struct Remainder {
+    pub gpio5: esp_idf_hal::gpio::Gpio5<'static>,
+    pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
+    pub gpio7: esp_idf_hal::gpio::Gpio7<'static>,
+    pub gpio9: esp_idf_hal::gpio::Gpio9<'static>,
+    pub gpio14: esp_idf_hal::gpio::Gpio14<'static>,
+    pub gpio15: esp_idf_hal::gpio::Gpio15<'static>,
+    pub gpio16: esp_idf_hal::gpio::Gpio16<'static>,
+    pub gpio17: esp_idf_hal::gpio::Gpio17<'static>,
+    pub gpio18: esp_idf_hal::gpio::Gpio18<'static>,
+    pub gpio46: esp_idf_hal::gpio::Gpio46<'static>,
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
@@ -403,6 +423,9 @@ pub struct Esp32PlatformBuilder {
     /// The display, started, and cleared to white, see st7305.rs.
     #[cfg(feature = "display-st7305")]
     st7305: crate::display::st7305::St7305,
+    /// The display, started, and cleared to black, see axs15231b.rs.
+    #[cfg(feature = "display-axs15231b")]
+    axs15231b: crate::display::axs15231b::Axs15231b,
     /// The board's buttons, see Esp32Platform::key_button and boot_button.
     #[cfg(feature = "key-button")]
     key_button: crate::push_button::PushButton,
@@ -415,8 +438,11 @@ pub struct Esp32PlatformBuilder {
     on_running: Vec<OnRunning>,
     #[cfg(feature = "i2c")]
     i2c: Arc<Mutex<esp_idf_hal::i2c::I2cDriver<'static>>>,
-    #[cfg(feature = "touch-driver")]
+    #[cfg(feature = "AXS5106L")]
     touch_driver_factory: TouchDriverFactory,
+    /// The touch screen's I2C bus, which its driver reads once the platform runs, see TouchDriver::start.
+    #[cfg(feature = "touch-axs15231b")]
+    touch_i2c: esp_idf_hal::i2c::I2cDriver<'static>,
 }
 
 impl Esp32PlatformBuilder {
@@ -599,7 +625,6 @@ impl Esp32PlatformBuilder {
                 gpio5: peripherals.pins.gpio5,
                 gpio6: peripherals.pins.gpio6,
                 gpio7: peripherals.pins.gpio7,
-                gpio8: peripherals.pins.gpio8,
                 gpio9: peripherals.pins.gpio9,
                 // gpio18: peripherals.pins.gpio18,
                 // gpio19: peripherals.pins.gpio19,
@@ -772,6 +797,56 @@ impl Esp32PlatformBuilder {
             (remainder, st7305)
         };
 
+        // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
+        #[cfg(all(feature = "board-guition-jc3248w535c", feature = "sd-card"))]
+        let sd_card = crate::sd_card::mount_spi3(
+            peripherals.spi3,
+            peripherals.pins.gpio12,
+            peripherals.pins.gpio11,
+            peripherals.pins.gpio13,
+            peripherals.pins.gpio10,
+        )
+        .map_err(|error| {
+            log::warn!("No SD card: {error:#}");
+            format!("{error:#}")
+        });
+        #[cfg(feature = "board-guition-jc3248w535c")]
+        let (remainder, axs15231b, touch_i2c) = {
+            let remainder = Remainder {
+                gpio5: peripherals.pins.gpio5,
+                gpio6: peripherals.pins.gpio6,
+                gpio7: peripherals.pins.gpio7,
+                gpio9: peripherals.pins.gpio9,
+                gpio14: peripherals.pins.gpio14,
+                gpio15: peripherals.pins.gpio15,
+                gpio16: peripherals.pins.gpio16,
+                gpio17: peripherals.pins.gpio17,
+                gpio18: peripherals.pins.gpio18,
+                gpio46: peripherals.pins.gpio46,
+                rmt: peripherals.rmt,
+            };
+            // The display's bus is driven through ESP-IDF's esp_lcd, by pin number, so its pins and SPI2 are not used
+            // here other than to keep them from the Remainder.
+            let _ = (peripherals.spi2, peripherals.pins.gpio1, peripherals.pins.gpio21, peripherals.pins.gpio39,
+                peripherals.pins.gpio40, peripherals.pins.gpio45, peripherals.pins.gpio47, peripherals.pins.gpio48);
+            let axs15231b = crate::display::axs15231b::Axs15231b::new(crate::display::axs15231b::Pins {
+                clock: 47,
+                chip_select: 45,
+                data: [21, 48, 40, 39],
+                backlight: 1,
+            })?;
+            let touch_i2c = {
+                use esp_idf_hal::{i2c::{I2cConfig, I2cDriver}, units::Hertz};
+                I2cDriver::new(
+                    peripherals.i2c0,
+                    peripherals.pins.gpio4, // SDA
+                    peripherals.pins.gpio8, // SCL
+                    &I2cConfig::new().baudrate(Hertz(400_000)),
+                )?
+            };
+            (remainder, axs15231b, touch_i2c)
+        };
+
         #[cfg(feature = "board-seeed-esp32c6-xiao")]
         let remainder = {
             let remainder = Remainder {
@@ -848,6 +923,8 @@ impl Esp32PlatformBuilder {
             reset,
             #[cfg(feature = "display-st7305")]
             st7305,
+            #[cfg(feature = "display-axs15231b")]
+            axs15231b,
             #[cfg(feature = "key-button")]
             key_button,
             #[cfg(feature = "boot-button")]
@@ -857,8 +934,10 @@ impl Esp32PlatformBuilder {
             on_running: Vec::new(),
             #[cfg(feature = "i2c")]
             i2c,
-            #[cfg(feature = "touch-driver")]
+            #[cfg(feature = "AXS5106L")]
             touch_driver_factory: touch_driver_factory,
+            #[cfg(feature = "touch-axs15231b")]
+            touch_i2c,
         };
         // The sensor's settings, e.g. its offset, and a reading in the log every minute.
         #[cfg(feature = "shtc3")]
@@ -1197,6 +1276,11 @@ impl Esp32PlatformBuilder {
         {
             display_manager = crate::display::st7305::St7305DisplayManager { display: self.st7305, overlay: false, generation: 0 };
         }
+        #[cfg(feature = "display-axs15231b")]
+        {
+            display_manager = crate::display::axs15231b::Axs15231bDisplayManager { display: self.axs15231b, overlay: false, generation: 0 };
+            touch_driver = TouchDriver::start(self.touch_i2c)?;
+        }
 
         #[cfg(feature = "display")]
         display_manager.set_status(&Status::Initializing(InitStatus::Starting))?;
@@ -1284,6 +1368,8 @@ impl Esp32PlatformBuilder {
         // It is drawn on in a framebuffer, which must be sent to the panel.
         #[cfg(feature = "display-st7305")]
         crate::display::st7305::spawn_flusher(&display_manager)?;
+        #[cfg(feature = "display-axs15231b")]
+        crate::display::axs15231b::spawn_flusher(&display_manager)?;
 
         Ok(Esp32PlatformRunner {
             sparko_std: Esp32Platform {

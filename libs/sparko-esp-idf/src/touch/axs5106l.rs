@@ -8,10 +8,7 @@ use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-pub struct TouchPoint {
-    pub x: u16,
-    pub y: u16,
-}
+pub use super::TouchPoint;
 
 pub struct TouchData {
     pub points: Vec<TouchPoint>,

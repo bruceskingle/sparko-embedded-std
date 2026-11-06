@@ -418,6 +418,10 @@ pub struct Esp32PlatformBuilder {
     dc: PinDriver<'static, Output>,
     #[cfg(feature = "mipi-dsi-display")]
     back_light: PinDriver<'static, esp_idf_hal::gpio::Output>,
+    /// Whether to turn the backlight on when the display starts, from the Screen feature's setting, see
+    /// features/screen.rs.
+    #[cfg(feature = "mipi-dsi-display")]
+    screen_on: bool,
     #[cfg(feature = "mipi-dsi-display-reset")]
     reset: PinDriver<'static, Output>,
     /// The display, started, and cleared to white, see st7305.rs.
@@ -919,6 +923,8 @@ impl Esp32PlatformBuilder {
             dc,
             #[cfg(feature = "mipi-dsi-display")]
             back_light,
+            #[cfg(feature = "mipi-dsi-display")]
+            screen_on: true,
             #[cfg(feature = "mipi-dsi-display-reset")]
             reset,
             #[cfg(feature = "display-st7305")]
@@ -944,6 +950,33 @@ impl Esp32PlatformBuilder {
         let builder = {
             let mut builder = builder;
             builder.internal_add_feature(Box::new(crate::features::temperature_humidity::TemperatureHumidity), true)?;
+            builder
+        };
+        // The screen's settings, and the backlight on, unless they say to keep it off: the AXS15231B's now that the
+        // panel has a picture, see axs15231b.rs, the others' when the display starts, see screen_on.
+        #[cfg(any(feature = "display-axs15231b", feature = "mipi-dsi-display"))]
+        let builder = {
+            let mut builder = builder;
+            builder.internal_add_feature(Box::new(crate::features::screen::ScreenSettings), true)?;
+            let on = match builder.features.last() {
+                Some(holder) => {
+                    use sparko_embedded_std::config::FeatureConfig;
+                    match crate::features::screen::ScreenConfig::from_config_spec(&holder.config.spec) {
+                        Ok(config) => crate::features::screen::on(&config),
+                        Err(error) => {
+                            error!("Unable to read the screen's settings: {error:#}");
+                            true
+                        }
+                    }
+                }
+                None => true,
+            };
+            #[cfg(feature = "display-axs15231b")]
+            builder.axs15231b.set_backlight(on)?;
+            #[cfg(feature = "mipi-dsi-display")]
+            {
+                builder.screen_on = on;
+            }
             builder
         };
         // The speaker's settings, e.g. its volume.
@@ -1110,8 +1143,12 @@ impl Esp32PlatformBuilder {
                 Err(e) => anyhow::bail!("Display init error {:?}", e),
             };
 
-            // enable back_light
-            self.back_light.set_high()?;
+            // The backlight on, unless the Screen feature's setting says to keep it off.
+            if self.screen_on {
+                self.back_light.set_high()?;
+            } else {
+                self.back_light.set_low()?;
+            }
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
@@ -1180,8 +1217,12 @@ impl Esp32PlatformBuilder {
                 Err(e) => anyhow::bail!("Display init error {:?}", e),
             };
 
-            // enable back_light
-            self.back_light.set_high()?;
+            // The backlight on, unless the Screen feature's setting says to keep it off.
+            if self.screen_on {
+                self.back_light.set_high()?;
+            } else {
+                self.back_light.set_low()?;
+            }
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
@@ -1244,8 +1285,12 @@ impl Esp32PlatformBuilder {
                 Err(e) => anyhow::bail!("Display init error {:?}", e),
             };
 
-            // enable back_light
-            self.back_light.set_high()?;
+            // The backlight on, unless the Screen feature's setting says to keep it off.
+            if self.screen_on {
+                self.back_light.set_high()?;
+            } else {
+                self.back_light.set_low()?;
+            }
 
             display_manager = mipi_dsi_display_manager::MipiDsiDisplayManager {
                 back_light: self.back_light,
@@ -1506,6 +1551,13 @@ impl Esp32Platform {
             api_server.get(&mut self.server_manager, uri, f)?;
         }
         Ok(())
+    }
+
+    /// The device's ID, its Wi-Fi MAC address in hex, e.g. 441bf6cc7fcc, which the app knows it by, see identity.rs,
+    /// None if the API server did not start.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn device_id(&self) -> Option<String> {
+        self.api_server.as_ref().map(|api_server| api_server.identity().id.clone())
     }
 
     /// The device's name on the network, e.g. cyd, from its mDNS hostname setting, if it has one.

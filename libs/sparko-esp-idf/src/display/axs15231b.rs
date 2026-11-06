@@ -57,13 +57,16 @@ pub struct Axs15231b {
     strips: [*mut u8; 2],
     /// Whether the frame has changed since it was last sent, see flush.
     dirty: bool,
+    /// The backlight's pin, see set_backlight.
+    backlight: i32,
 }
 
 // The panel IO and strips are only used by whoever holds the display, behind the display manager's mutex.
 unsafe impl Send for Axs15231b {}
 
 impl Axs15231b {
-    /// Starts the QSPI bus on SPI2, the panel, and its backlight, and clears it to black.
+    /// Starts the QSPI bus on SPI2 and the panel, and clears it to black, with the backlight off, which the platform
+    /// turns on, unless the Screen feature's setting says to keep it off, see features/screen.rs.
     pub fn new(pins: Pins) -> anyhow::Result<Self> {
         let mut bus: sys::spi_bus_config_t = Default::default();
         bus.sclk_io_num = pins.clock;
@@ -101,6 +104,7 @@ impl Axs15231b {
             frame: vec![Rgb565::BLACK; WIDTH as usize * HEIGHT as usize],
             strips: [strip()?, strip()?],
             dirty: true,
+            backlight: pins.backlight,
         };
         display.command(0x11, &[])?; // Sleep out
         std::thread::sleep(Duration::from_millis(120));
@@ -109,15 +113,23 @@ impl Axs15231b {
         std::thread::sleep(Duration::from_millis(20));
         display.flush()?;
 
-        // The backlight once there is a picture, so that what the panel had in its memory is not seen.
+        // The backlight driven off, as it may not be off if left floating, until set_backlight, once there is a
+        // picture, so that what the panel had in its memory is not seen.
         let backlight = sys::gpio_config_t {
             pin_bit_mask: 1u64 << pins.backlight,
             mode: sys::gpio_mode_t_GPIO_MODE_OUTPUT,
             ..Default::default()
         };
         esp!(unsafe { sys::gpio_config(&backlight) })?;
-        esp!(unsafe { sys::gpio_set_level(pins.backlight, 1) })?;
+        esp!(unsafe { sys::gpio_set_level(pins.backlight, 0) })?;
         Ok(display)
+    }
+
+    /// Turns the backlight on or off, e.g. off for a board run headless, whose panel is broken, see
+    /// features/screen.rs.
+    pub fn set_backlight(&mut self, on: bool) -> anyhow::Result<()> {
+        esp!(unsafe { sys::gpio_set_level(self.backlight, on as u32) })?;
+        Ok(())
     }
 
     fn command(&mut self, command: u8, parameters: &[u8]) -> anyhow::Result<()> {

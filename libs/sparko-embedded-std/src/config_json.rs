@@ -104,7 +104,8 @@ impl ConfigManager {
 
     /// Changes the config, as {"features": {"<feature>": {"enabled": true, "settings": {"<name>": value}}}}, where
     /// only what is given changes, and null clears an optional setting. Everything is checked before anything is
-    /// saved, so that a mistake changes nothing. Like the /config page's changes, they take effect when the device
+    /// saved, so that a mistake changes nothing, including that a feature which is to be enabled has all its required
+    /// settings. Like the /config page's changes, they take effect when the device
     /// restarts.
     pub fn apply_json(&self, update: &Value) -> anyhow::Result<()> {
         let features = update
@@ -159,6 +160,19 @@ impl ConfigManager {
                     settings.push((name.clone(), text));
                 }
             }
+            // An enabled feature must have each of its required settings, given here or saved before, as it would fail
+            // to start without them, e.g. a feature enabled on a new device, whose settings have never been given.
+            if enabled.unwrap_or(config.enabled).is_enabled() {
+                for (name, setting) in config.spec.map.iter().filter(|(_, setting)| setting.required) {
+                    let set = match settings.iter().find(|(changed, _)| changed == name) {
+                        Some((_, text)) => text.is_some(),
+                        None => !setting.value.is_none(),
+                    };
+                    if !set {
+                        anyhow::bail!("{feature_name} {name} is required");
+                    }
+                }
+            }
             changes.push((feature_name.clone(), enabled, settings));
         }
 
@@ -181,5 +195,108 @@ impl ConfigManager {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use indexmap::IndexMap;
+    use serde_json::json;
+
+    use crate::command::Commands;
+    use crate::config::{ConfigSpec, ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue};
+    use crate::config_manager::ConfigManager;
+    use crate::feature::FeatureDescriptor;
+    use crate::problem::ProblemManager;
+
+    /// Keeps nothing, as each test starts from a device whose settings have never been given.
+    struct Store;
+
+    impl ConfigStore for Store {
+        fn erase_all(&self) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn load(&self, _name: &str, _config_value: &mut ConfigSpecValue) {}
+
+        fn save(&self, _name: &str, config_value: &mut ConfigSpecValue, str_value: &str) -> anyhow::Result<()> {
+            config_value.value = config_value.value.from_str(str_value)?;
+            Ok(())
+        }
+
+        fn remove(&self, _name: &str, config_value: &mut ConfigSpecValue) -> anyhow::Result<()> {
+            config_value.value = config_value.value.to_none();
+            Ok(())
+        }
+
+        fn load_enabled_state(&self) -> anyhow::Result<EnabledState> {
+            Ok(EnabledState::Disabled)
+        }
+
+        fn save_enabled_state(&self, _enabled_state: EnabledState) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    struct Factory;
+
+    impl ConfigStoreFactory for Factory {
+        fn create(&self, _name: String, _internal: bool) -> anyhow::Result<Box<dyn ConfigStore>> {
+            Ok(Box::new(Store))
+        }
+    }
+
+    struct NoCommands;
+
+    impl Commands for NoCommands {
+        fn show_config_page(&self, _resp: &mut dyn std::io::Write) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        fn handle_command(&self, _resp: &mut dyn std::io::Write, _form: IndexMap<String, String>, _config_manager: &ConfigManager)
+            -> anyhow::Result<()>
+        {
+            Ok(())
+        }
+    }
+
+    /// A device with a feature, Gateway, which is disabled and has a required setting, host, which has never been set.
+    fn new_device() -> ConfigManager {
+        let mut builder = ConfigManager::builder(Box::new(Factory), ProblemManager::new(), Arc::new(Mutex::new(false)), Box::new(NoCommands))
+            .unwrap();
+        let host = ConfigSpecValue {
+            value: TypedValue::String(64, None),
+            required: true,
+            problem_id: None,
+            secret: false,
+            label: None,
+            slider: None,
+        };
+        let config = ConfigSpec::builder().with("host".to_string(), host).unwrap().build();
+        builder.add_feature(FeatureDescriptor { name: "Gateway".to_string(), config }, false).unwrap();
+        builder.build()
+    }
+
+    fn enabled(device: &ConfigManager) -> bool {
+        device.features["Gateway"].inner.lock().unwrap().enabled.is_enabled()
+    }
+
+    #[test]
+    fn enabling_a_feature_whose_required_setting_was_never_set_is_refused() {
+        let device = new_device();
+        let error = device.apply_json(&json!({ "features": { "Gateway": { "enabled": true } } })).unwrap_err();
+        assert_eq!(format!("{error:#}"), "Gateway host is required");
+        assert!(!enabled(&device));
+    }
+
+    #[test]
+    fn enabling_a_feature_with_its_required_setting_given_at_the_same_time_is_saved() {
+        let device = new_device();
+        device.apply_json(&json!({ "features": { "Gateway": { "enabled": true, "settings": { "host": "192.168.4.2" } } } }))
+            .unwrap();
+        assert!(enabled(&device));
+        assert_eq!(device.value("Gateway", "host").as_deref(), Some("192.168.4.2"));
     }
 }

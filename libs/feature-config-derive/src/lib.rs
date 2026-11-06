@@ -400,6 +400,8 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
         } => quote! {
             let #field_ident: String = match spec.map.get(#key) {
                 Some(ConfigSpecValue { value: TypedValue::String(_, Some(val)), .. }) => val.clone(),
+                // Required, but not set, e.g. a feature enabled before its settings were given.
+                Some(ConfigSpecValue { value, .. }) if value.is_none() => anyhow::bail!("{} is not set", #key),
                 Some(other) => anyhow::bail!(
                     "Invalid type for {}: expected String, got {:?}",
                     #field_str, other.value,
@@ -436,6 +438,8 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
                             "value too long for `{}`: max length is {}",
                             #field_str, #len,
                         ))?,
+                // Required, but not set, e.g. a feature enabled before its settings were given.
+                Some(ConfigSpecValue { value, .. }) if value.is_none() => anyhow::bail!("{} is not set", #key),
                 Some(other) => anyhow::bail!(
                     "Invalid type for {}: expected String, got {:?}",
                     #field_str, other.value,
@@ -473,6 +477,8 @@ fn emit_from_extraction(field_ident: &syn::Ident, kind: &FieldKind, key: &str) -
             quote! {
                 let #field_ident = match spec.map.get(#key) {
                     Some(ConfigSpecValue { value: #pattern, .. }) => #extraction,
+                    // Required, but not set, e.g. a feature enabled before its settings were given.
+                    Some(ConfigSpecValue { value, .. }) if value.is_none() => anyhow::bail!("{} is not set", #key),
                     Some(other) => anyhow::bail!(
                         "Invalid type for {}: expected {:?}, got {:?}",
                         #field_str, other.value.to_none(), other.value,

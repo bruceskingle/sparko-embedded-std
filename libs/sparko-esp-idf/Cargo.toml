@@ -41,6 +41,7 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 sparko-embedded-std = { path = "../sparko-embedded-std"}
+bruce-embedded-firmware-record = { path = "../bruce-embedded-firmware-record" }
 #feature-config-derive = { path = "../feature-config-derive"}
 
 [features]

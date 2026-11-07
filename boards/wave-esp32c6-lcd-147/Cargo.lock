@@ -104,6 +104,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "bruce-embedded-firmware-record"
+version = "0.1.0"
+
+[[package]]
 name = "bstr"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1801,6 +1805,7 @@ name = "sparko-esp-idf"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bruce-embedded-firmware-record",
  "chrono",
  "croner",
  "embedded-graphics",

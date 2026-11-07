@@ -145,6 +145,18 @@ The config page, and ```/api/info``` where the API is enabled, say which board t
 # Development
 In order to avoid compiler errors during development one of the board features should be enabled in VSCode settings (file ```.vscode/settings.json``` in the workspace root) and when building on the command line release mode and one board feature should be selected e.g. ```cargo build --release --features board-cyd-esp32-28```
 
+# Building and Flashing
+Firmware built for the wrong board drives the wrong pins, and can damage it, so each firmware image carries a record of the board it was built for, the firmware and its version, which a board crate adds with ```.with_firmware(sparko_esp_idf::firmware!())```. It starts with the magic ```bruce-embedded-std firmware 1```, and the firmware logs it as it starts, with the device's ID, its Wi-Fi MAC.
+
+Flash with ```bruce-embedded-flash``` (```tools/bruce-embedded-flash```, install it with ```cargo install --path tools/bruce-embedded-flash```), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in ```tools/bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Marco Sparko's Devices page.
+
+Firmware is kept in a folder shared by every app which flashes these boards, ```~/Library/Application Support/bruce-embedded-std/firmware/``` on macOS, by the GitHub repository it comes from and its version, e.g. ```bruce-embedded-std/0.1.0/``` (```tools/bruce-embedded-firmware```). What is built here goes in ```bruce-embedded-std/dev/```:
+
+- ```cargo run --release``` in a board's directory builds its demo and flashes it, and its cargo runner, ```bruce-embedded-flash flash --monitor --keep-as bruce-embedded-std```, then copies it into ```bruce-embedded-std/dev/```, so the folder holds what was last flashed. A plain ```cargo build``` only builds into the board's ```target/```.
+- ```./build.sh``` builds every board's demo, or those named, e.g. ```./build.sh seeed-esp32c6-xiao```, and copies each into ```bruce-embedded-std/dev/```.
+
+Releases attach each board's firmware as an ELF file, and a repository with firmware has the GitHub topic ```bruce-embedded-firmware``` and a ```bruce-embedded-std.md``` in its root, whose first line, a heading, says what its firmware is, and the rest more about it. ```bruce-embedded-flash firmware find```, ```releases``` and ```download```, or Get Firmware in the window, find these repositories and download their releases into the shared folder.
+
 # Supported Boards
 The following boards are currently supported:
 

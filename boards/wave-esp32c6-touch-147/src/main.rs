@@ -174,7 +174,7 @@ fn main() -> anyhow::Result<()> {
         ))?
         .with_display_orientation(DisplayOrientation::Rotate270)?
         .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
-        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        .with_firmware(sparko_esp_idf::firmware!())
         .build()?;
 
     sparko_esp32.start()

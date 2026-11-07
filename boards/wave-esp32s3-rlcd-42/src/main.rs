@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
                 message::show(&display_manager, &text)
             }))
         })
-        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        .with_firmware(sparko_esp_idf::firmware!())
         .build()?;
 
     // At once, while the board joins the network, so in a thread of its own, at the volume set on the /config page.

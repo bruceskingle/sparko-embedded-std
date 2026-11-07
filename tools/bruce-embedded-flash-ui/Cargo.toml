@@ -1,0 +1,24 @@
+[package]
+name = "bruce-embedded-flash-ui"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT OR Apache-2.0"
+description = "A Dioxus component for flashing bruce-embedded-std firmware to boards on USB, and a desktop app built with it."
+
+[dependencies]
+anyhow = "1"
+dioxus = { version = "0.7.10", default-features = false, features = ["lib"] }
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+
+bruce-embedded-flash = { path = "../bruce-embedded-flash" }
+bruce-embedded-firmware = { path = "../bruce-embedded-firmware" }
+
+[features]
+# The desktop app, bruce-embedded-flash-gui, rather than only the component.
+desktop = ["dioxus/desktop", "dioxus/launch"]
+
+[[bin]]
+name = "bruce-embedded-flash-gui"
+path = "src/main.rs"
+required-features = ["desktop"]

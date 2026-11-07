@@ -37,11 +37,37 @@ pub mod panics;
 #[cfg(any(feature = "mipi-dsi-display", feature = "display-st7305"))]
 pub type DisplaySpi = esp_idf_hal::spi::SpiDeviceDriver<'static, &'static esp_idf_hal::spi::SpiDriver<'static>>;
 
-/// The firmware a board crate builds, which the platform cannot know itself, see Esp32PlatformBuilder::with_firmware.
+pub use bruce_embedded_firmware_record::FirmwareRecord;
+
+/// The firmware a board crate builds, which the platform cannot know itself, made with firmware!, see
+/// Esp32PlatformBuilder::with_firmware.
 #[derive(Clone, Copy)]
 pub struct Firmware {
     pub name: &'static str,
     pub version: &'static str,
+    /// The record in the image of the board it was built for, which a flasher reads before flashing, see
+    /// bruce-embedded-firmware-record, or None if the board crate did not say what it builds.
+    pub record: Option<&'static FirmwareRecord>,
+}
+
+/// The Firmware of the crate it is called in, its name and version, built for the board its `board-*` feature
+/// chooses, with the record of them a flasher reads before flashing, placed by the linker at the start of the image,
+/// e.g. `Esp32Platform::builder()...with_firmware(sparko_esp_idf::firmware!())`.
+#[macro_export]
+macro_rules! firmware {
+    () => {{
+        #[used]
+        #[unsafe(link_section = ".rodata_custom_desc")]
+        static RECORD: $crate::FirmwareRecord =
+            $crate::FirmwareRecord::new($crate::board_name(), env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        $crate::Firmware {
+            name: env!("CARGO_PKG_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+            // Through black_box, so that the record is read where it is, and so kept by the linker, which keeps only
+            // what is referred to, rather than its contents copied by the compiler.
+            record: Some(::core::hint::black_box(&RECORD)),
+        }
+    }};
 }
 
 /// Why the device last started, e.g. Panic, or Brownout, which shows power dips, as /api/info says, see api.rs.
@@ -74,7 +100,7 @@ compile_error!("The boot-button feature is for a board whose BOOT button the pla
 compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
 
 /// The board this was built for, from its board- feature.
-pub fn board_name() -> &'static str {
+pub const fn board_name() -> &'static str {
     if cfg!(feature = "board-cyd-esp32-28") {
         "cyd-esp32-28"
     } else if cfg!(feature = "board-esp32-devkit-v1") {

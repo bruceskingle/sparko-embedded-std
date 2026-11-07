@@ -66,9 +66,21 @@ This is the model every piece of on-board hardware follows, so that the platform
 
 - Build a board from its own directory: `cd boards/cyd-esp32-28 && cargo build --release`. Always `--release`. Never build the
   libs on their own or several boards as one workspace: the target and features come from the board.
-- `./build.sh` builds every board in turn (slow).
-- Flash and monitor: `cargo run --release` in the board directory (the runner is `espflash flash --monitor`). Ask
-  before flashing: it needs the board plugged in and replaces what is on it.
+- `./build.sh` builds every board in turn (slow), or those named, e.g. `./build.sh seeed-esp32c6-xiao`, and copies each
+  demo to the shared firmware folder as `bruce-embedded-std/dev/`, see `tools/bruce-embedded-firmware`.
+- Flash and monitor: `cargo run --release` in the board directory, which also keeps the ELF in the shared firmware
+  folder's `bruce-embedded-std/dev/`. The runner is `bruce-embedded-flash flash --monitor --keep-as bruce-embedded-std`
+  (`tools/bruce-embedded-flash`, install it with `cargo install --path tools/bruce-embedded-flash`), which flashes only
+  firmware built for the board on the port, from the firmware record each image carries
+  (`libs/bruce-embedded-firmware-record`, added by `.with_firmware(sparko_esp_idf::firmware!())`), see its README. Never
+  flash with espflash directly, and never pass `--confirm-board` on the owner's behalf. Ask before flashing: it needs
+  the board plugged in and replaces what is on it.
+- `tools/` holds host programs, each its own Cargo project built with the default toolchain, not `esp`:
+  `bruce-embedded-firmware`, the shared firmware folder, `<data dir>/bruce-embedded-std/firmware/<repo>/<version>/`,
+  e.g. `bruce-smart-home/dev/` for marco-sparko's capture builds, and later the downloader from GitHub releases,
+  `bruce-embedded-flash`, the flashing library and command line, and `bruce-embedded-flash-ui`, the Dioxus component,
+  `Flasher`, which marco-sparko's Devices page uses, and the desktop app built with it,
+  `cargo run --features desktop -- <ELF>...`.
 - ESP-IDF tools are installed globally (`ESP_IDF_TOOLS_INSTALL_DIR = "global"`, in `~/.espressif`), not per project.
 - The cyd-esp32-28 board depends on a local fork at `../../../ws2812-esp32-rmt-driver` (i.e. `~/git/ws2812-esp32-rmt-driver`).
 

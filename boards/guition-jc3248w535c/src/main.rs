@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             }))
         })
-        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        .with_firmware(sparko_esp_idf::firmware!())
         .build()?;
 
     // The touch driver keeps only a weak reference to its listeners, so this one is kept for as long as main runs.

@@ -904,7 +904,7 @@ impl Esp32PlatformBuilder {
             core_feature_config,
             wifi_sender,
             modem,
-            firmware: crate::Firmware { name: "unknown", version: "unknown" },
+            firmware: crate::Firmware { name: "unknown", version: "unknown", record: None },
             #[cfg(feature = "board-cyd-esp32-28")]
             boot_button,
             #[cfg(feature = "sd-card")]
@@ -1008,10 +1008,18 @@ impl Esp32PlatformBuilder {
         Ok(self)
     }
 
-    /// The name and version of the board crate's firmware, e.g. env!("CARGO_PKG_NAME") and env!("CARGO_PKG_VERSION"),
-    /// which the API says, see api.rs.
-    pub fn with_firmware(mut self, name: &'static str, version: &'static str) -> Self {
-        self.firmware = crate::Firmware { name, version };
+    /// The board crate's firmware, made with firmware!, whose name and version the API says, see api.rs. Its record,
+    /// and the device's ID, the Wi-Fi MAC, are logged at once, so that the serial log says which board the firmware
+    /// was built for, as early as can be.
+    pub fn with_firmware(mut self, firmware: crate::Firmware) -> Self {
+        let mut mac = [0u8; 6];
+        unsafe { esp_idf_sys::esp_read_mac(mac.as_mut_ptr(), esp_idf_sys::esp_mac_type_t_ESP_MAC_WIFI_STA) };
+        let id: String = mac.iter().map(|byte| format!("{byte:02x}")).collect();
+        match firmware.record {
+            Some(record) => info!("{record} id={id}"),
+            None => info!("{} {}, with no firmware record, id={id}", firmware.name, firmware.version),
+        }
+        self.firmware = firmware;
         self
     }
 
@@ -1375,7 +1383,7 @@ impl Esp32PlatformBuilder {
                 let mut resp = req.into_ok_response()?;
                 let time = Local::now().format("%Y-%m-%d %H:%M:%S");
                 let board = crate::board_name();
-                let crate::Firmware { name, version } = firmware;
+                let crate::Firmware { name, version, .. } = firmware;
                 resp.write(
                     format!(
                         r#"

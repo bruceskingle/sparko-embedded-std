@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
         .with_feature(Box::new(AnalogClock::builder().build()?))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
         .with_display_orientation(sparko_embedded_std::DisplayOrientation::Rotate0)?
-        .with_firmware(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        .with_firmware(sparko_esp_idf::firmware!())
         .build()?;
 
     sparko_esp32.start()

@@ -1,0 +1,21 @@
+[package]
+name = "bruce-embedded-flash"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT OR Apache-2.0"
+description = "Flashes firmware built on bruce-embedded-std to a board, only if it was built for that board."
+
+[dependencies]
+anyhow = "1"
+dirs = "6"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive", "env"] }
+espflash = { version = "4.2", default-features = false, features = ["serialport"] }
+serialport = { version = "4.7", default-features = false }
+object = { version = "0.37", default-features = false, features = ["read_core", "elf", "std"] }
+
+bruce-embedded-firmware-record = { path = "../../libs/bruce-embedded-firmware-record" }
+bruce-embedded-firmware = { path = "../bruce-embedded-firmware" }

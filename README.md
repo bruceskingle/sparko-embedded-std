@@ -1,4 +1,18 @@
 # sparko-embedded-std
+
+**This repository has moved.** It was split into four, and is kept, read only, for its history:
+
+- [bruce-embedded-std](https://github.com/bruceskingle/bruce-embedded-std): the hardware agnostic code: features,
+  configuration, the HTTP server, mDNS, tasks and graphics, with its derive macro.
+- [bruce-esp-idf](https://github.com/bruceskingle/bruce-esp-idf): the ESP32 specific code, on ESP-IDF, and the example
+  boards.
+- [bruce-embedded-firmware-record](https://github.com/bruceskingle/bruce-embedded-firmware-record): the record each
+  firmware image carries of the board it was built for.
+- [bruce-embedded-flash](https://github.com/bruceskingle/bruce-embedded-flash): flashing firmware to boards, by the
+  record it carries, with a window for it.
+
+What follows is the README as it was before the split.
+
 Sparko Embedded Std is a platform for embedded applications for hardware such as ESP32 SoC boards. This platform includes the standard Rust library which means that the heap and standard collections like ```Vec``` are all available for use. The platform currently supports, and was designed for, ESP32 boards and uses the ```esp-idf-hal``` and ```esp-idf-svc``` crates. It is possible that this platform will support other hardware architectures in the future (such as Raspberry PI boards) but for the time being it is ESP32 only.
 
 # The Core Platform

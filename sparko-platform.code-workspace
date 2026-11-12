@@ -58,14 +58,26 @@
 		},
 		{
 			"path": "../bruce-method-release"
+		},
+		{
+			"path": "../bruce-embedded-std"
+		},
+		{
+			"path": "../bruce-embedded-firmware-record"
+		},
+		{
+			"path": "../bruce-embedded-flash"
+		},
+		{
+			"path": "../bruce-esp-idf"
 		}
 	],
 	"settings": {
 		"explorer.autoReveal": false,
 		"files.exclude": {
-			"libs": true,
-			"boards": true,
-			// ".vscode": true,
+			// "libs": true,
+			// "boards": true,
+			// // ".vscode": true,
 			// "target": true
 		},
 		"rust-analyzer.linkedProjects": [

@@ -1,5 +1,5 @@
 # sparko-embedded-std
-Sparko Embedded Std is a platform for embedded applications for hardware such as ESP32 SoC boards. This platform includes the standard Rust library which means that the heap and standard collections like ```Vec``` are all available for use. The platform currently supports, and was designed for, ESP32 boards and uses the ```esp-idf-hal``` and ```esp-idf-svc``` crates. It is possible that this platform will support other hardware architectures in the future (such as Raspberry PI boards) but for the time being it is ESP32 only.
+Sparko Embedded Std is a platform for embedded applications for hardware such as ESP32 SoC boards. This platform includes the standard Rust library which means that the heap and standard collections like ```Vec``` are all available for use. The platform is split in two, by one rule: ```sparko-embedded-std``` holds the hardware agnostic code, and ```sparko-esp-idf``` the code specific to ESP32 boards, using the ```esp-idf-hal``` and ```esp-idf-svc``` crates, see [Architecture](#architecture). ESP32 boards are the only hardware supported for now, but the split keeps the way open for others, such as a Raspberry Pi running Linux, which would be a platform crate beside ```sparko-esp-idf```.
 
 # The Core Platform
 The core platform provides a set of services to support the running of one or more *Features*, which provide the application functionality. Each feature can be enabled or disabled and may have a configuration. The *Core Feature* provides WiFi and an HTTP server. If the *Core Feature* does not have a valid configuration (including the SSID and password for your WiFi network), then it will start WiFi an *Access Point Mode*. This means that it will create a new WiFi network (with the SSID **ESP32-Setup** and the password **password**) with a captive portal so that if you connect to this network you will be taken automatically to the config page so the necessary configuration values can be entered. Once this is done and the board is rebooted it will start WiFi in client mode, connecting to the WiFi network you have configured as a normal device.
@@ -43,27 +43,34 @@ There are other approaches based on bare metal (non std) architecture (e.g. usin
 In a search for an alternative approach I came across the YouTube ```Floodplain``` channel (https://www.youtube.com/watch?v=o8yNNVFzNnM&t=9s) and based on that approach, and using the ```esp-idf-svc``` crate I was able to get WiFi working successfully. Binaries build on the standard library and using ```esp-idf-svc``` are larger than bare metal binaries, but I have not had any trouble running them on any ESP32 based board including the DevKitV1, and while this is not a pure Rust implementation (the ```esp-idf-``` crates are a thin Rust wrapper for the C based ESP IDF SDK) those underlying C implementations (especially the WiFi) are production tested mature implementations which I have found to work well.
 
 # Architecture
-This repo contains a number of library crates under the ```libs``` directory and a set of example binary crates under the ```examples``` directory:
+This repo contains a number of library crates under the ```libs``` directory and an example binary crate for each board under the ```boards``` directory:
 ```
-├── examples
-│   ├── cyd-esp32-28
-│   ├── esp32-devkit-v1
-│   ├── esp32c3-supermini
-│   ├── wave-esp32c6-lcd-147
-│   ├── wave-esp32c6-touch-147
-│   ├── wave-esp32s3-rlcd-42
-│   └── seeed-esp32c6-xiao
-└── libs
-    ├── sparko-embedded-std
-    │   └── examples
-    └── sparko-esp-idf
+├── boards
+│   ├── cyd-esp32-28
+│   ├── esp32-devkit-v1
+│   ├── esp32c3-supermini
+│   ├── guition-jc3248w535c
+│   ├── seeed-esp32c6-xiao
+│   ├── wave-esp32c6-lcd-147
+│   ├── wave-esp32c6-touch-147
+│   └── wave-esp32s3-rlcd-42
+├── libs
+│   ├── bruce-embedded-firmware-record
+│   ├── feature-config-derive
+│   ├── sparko-embedded-std
+│   │   └── examples
+│   └── sparko-esp-idf
+└── tools
+```
+The platform is two crates, divided by one rule: code which would work the same on any hardware with the standard library goes in ```sparko-embedded-std```, and code which needs an ESP32, or ESP-IDF, goes in ```sparko-esp-idf```. ```sparko-esp-idf``` depends on ```sparko-embedded-std```, never the other way round. They are to become two repositories, ```bruce-embedded-std``` and ```bruce-esp-idf```.
 
-```
 ## sparko-embedded-std
-This crate contains pure rust code (without any ESP32 specific dependencies). This separation may become useful in the future when other hardware families are supported but for the time being is somewhat academic.
+The hardware agnostic platform: *Features* and their configuration, the config page, the task scheduler, time zones, graphics such as the clocks and the colours, the mDNS responder, the attitude and tilt worked out from an IMU's readings, and the traits a platform implements, e.g. ```Platform```, ```ConfigStore```, ```HttpServerManager``` and ```DisplayManager```. It has no ESP32 dependencies, so it builds, and its tests run, on a computer, with ```cargo test --all-features```. It would be shared by a platform for other hardware, e.g. a Raspberry Pi running Linux.
 
 ## sparko-esp-idf
-This crate contains all platform code which is specific to the ESP-IDF based EAP32 implementation (as well as some code which arguably should be in ```sparko-embedded-std```). Support for various features of the platform is enabled via ```Cargo``` features
+The ESP32 platform: everything which needs ESP-IDF, e.g. Wi-Fi, the HTTP server, NVS, the SD card, and the drivers for each board's hardware, implementing ```sparko-embedded-std```'s traits, with ```Esp32Platform``` and the *Features* which use it. Support for each board, and its hardware, is enabled with ```Cargo``` features.
+
+The device drivers in ```sparko-esp-idf``` which use only one or two ESP-IDF types, e.g. ```shtc3.rs```'s ```I2cDriver```, are to become ```no_std``` crates of their own on the ```embedded-hal``` traits, usable on any hardware, rather than move into ```sparko-embedded-std```.
 
 # Design Patterns
 The platform makes use of the builder pattern as a way of trying to get the best trade off between the cost and benefits of the standard library. Most of the platform types have a builder containing collections which allow items to be added, but the ```build()``` method will usually call ```.shrink_to_fit()``` on those collections which are then treated as immutable from that point onwards.

@@ -17,6 +17,10 @@ pub mod feature;
 pub mod command;
 pub mod graphics;
 pub mod listener;
+/// Answers mDNS queries for the device's .local name, on any platform with std's UDP sockets.
+pub mod mdns;
+#[cfg(any(feature = "tilt", feature = "ahrs"))]
+pub mod ahrs;
 
 pub type Layout = fn(&Rectangle) -> Rectangle;
 

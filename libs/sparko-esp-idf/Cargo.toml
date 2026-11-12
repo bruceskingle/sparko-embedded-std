@@ -22,7 +22,6 @@ serde_json = { version = "1", features = ["raw_value"] }
 hmac = "0.12"
 sha2 = "0.10"
 chrono = "0.4.44"
-simple-dns = "0.11.2"
 croner = "3.0.1"
 #smart-leds = "0.4.0"
 #smart-leds-trait = { version = "0.3"}
@@ -36,7 +35,6 @@ embedded-hal = "1.0"
 #esp-hal-smartled = { version = "0.17.0", features = ["esp32"]}
 
 rgb = "0.8.53"
-ahrs = {version="0.8.0", features=["field_access"], optional = true}
 nalgebra = {version="0.34.2", optional = true}
 
 
@@ -92,11 +90,11 @@ board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker", "battery"] #
 
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
-ahrs = ["dep:ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
+ahrs = ["sparko-embedded-std/ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
 boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c).
 key-button = []                         # The board's KEY button, GPIO18 on board-wave-esp32s3-rlcd-42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-wave-esp32s3-rlcd-42).
 sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39, board-guition-jc3248w535c, SPI3: GPIO10, 11, 12, 13).
-tilt = ["dep:ahrs", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
+tilt = ["sparko-embedded-std/tilt", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 
 [build-dependencies]

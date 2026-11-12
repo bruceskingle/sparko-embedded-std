@@ -52,6 +52,12 @@
 		},
 		{
 			"path": "../bruce-db"
+		},
+		{
+			"path": "../bruce-util-progress"
+		},
+		{
+			"path": "../bruce-method-release"
 		}
 	],
 	"settings": {
@@ -127,5 +133,43 @@
 			"--release",
 		],
 		"rust-analyzer.checkOnSave": true
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				// Builds the XIAO ESP32-C6's demo and copies it to the shared firmware folder's bruce-embedded-std/dev/, where
+				// the flasher finds it: a plain cargo build leaves it only in the board's target/.
+				"label": "Firmware: Build XIAO C6",
+				"type": "shell",
+				"command": "./build.sh seeed-esp32c6-xiao",
+				"options": { "cwd": "${workspaceFolder:Root Files}" },
+				"problemMatcher": ["$rustc"]
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				// The stand alone flasher window, after building the XIAO C6's firmware into the shared folder, to flash it
+				// from bruce-embedded-std's dev version there.
+				"type": "lldb",
+				"request": "launch",
+				"name": "Flasher: XIAO C6 firmware",
+				"preLaunchTask": "Firmware: Build XIAO C6",
+				"cargo": {
+					"args": [
+						"build",
+						"--manifest-path=${workspaceFolder:Root Files}/tools/bruce-embedded-flash-ui/Cargo.toml",
+						"--features=desktop",
+						"--bin=bruce-embedded-flash-gui"
+					],
+					"filter": { "name": "bruce-embedded-flash-gui", "kind": "bin" }
+				},
+				"args": [],
+				"cwd": "${workspaceFolder:Root Files}/tools/bruce-embedded-flash-ui"
+			}
+		]
 	}
 }

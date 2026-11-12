@@ -1,10 +1,8 @@
 use std::fmt::Display;
 
-use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use sparko_embedded_std::{
     config::{ConfigSpec, FeatureConfig},
     feature::FeatureDescriptor,
-    graphics::Color,
 };
 
 mod esp32_platform;
@@ -129,7 +127,6 @@ pub mod features;
 mod http;
 #[cfg(feature = "led")]
 mod led;
-mod mdns;
 mod portal;
 pub mod smart_led;
 mod wifi;
@@ -137,8 +134,12 @@ mod wifi;
 #[cfg(feature = "touch-driver")]
 pub mod touch;
 
+/// The attitude and tilt, from sparko-embedded-std, and the IMU chips the boards have, which give it their readings.
 #[cfg(any(feature = "tilt", feature = "ahrs"))]
-pub mod ahrs;
+pub mod ahrs {
+    pub use sparko_embedded_std::ahrs::*;
+    pub mod qmi8658;
+}
 
 #[cfg(feature = "display")]
 mod display;
@@ -228,21 +229,4 @@ impl<F: Feature> DynFeature for F {
         let typed_config = F::Config::from_config_spec(config)?;
         self.start(sparko, initializer, typed_config)
     }
-}
-
-pub fn to_rgb565(color: &Color) -> Rgb565 {
-    match color {
-        Color::Black => Rgb565::BLACK,
-        Color::Red => Rgb565::RED,
-        Color::Green => Rgb565::GREEN,
-        Color::Blue => Rgb565::BLUE,
-        Color::Yellow => Rgb565::YELLOW,
-        Color::Magenta => Rgb565::MAGENTA,
-        Color::Cyan => Rgb565::CYAN,
-        Color::White => Rgb565::WHITE,
-    }
-}
-
-pub fn rgb565_from_rgb8(color: &rgb::RGB8) -> Rgb565 {
-    Rgb565::new(color.r >> 3, color.g >> 2, color.b >> 3)
 }

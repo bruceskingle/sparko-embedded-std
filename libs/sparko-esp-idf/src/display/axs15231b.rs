@@ -208,7 +208,7 @@ impl DrawTarget for Axs15231b {
     }
 }
 
-/// The colours, as the other colour displays have them, see to_rgb565 in lib.rs.
+/// The colours, as the other colour displays have them, see to_rgb565 in sparko-embedded-std's graphics.
 pub struct Axs15231bDisplayManager {
     pub display: Axs15231b,
     /// See DisplayManager::overlay_active and generation.
@@ -257,11 +257,11 @@ impl DisplayManager for Axs15231bDisplayManager {
     }
 
     fn map_color(&self, color: &Color) -> Rgb565 {
-        crate::to_rgb565(color)
+        sparko_embedded_std::graphics::to_rgb565(color)
     }
 
     fn map_rgb8(&self, color: &rgb::RGB8) -> Rgb565 {
-        crate::rgb565_from_rgb8(color)
+        sparko_embedded_std::graphics::rgb565_from_rgb8(color)
     }
 }
 

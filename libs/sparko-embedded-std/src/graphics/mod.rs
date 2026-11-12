@@ -1,5 +1,6 @@
 use anyhow::Result;
 use embedded_graphics::mono_font::{MonoFont, MonoTextStyle, ascii::FONT_10X20};
+use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Baseline, Text};
 use rgb::RGB8;
@@ -18,6 +19,25 @@ pub enum Color {
     Magenta,
     Cyan,
     White,
+}
+
+/// The colour as 16 bit RGB565, which the colour displays take.
+pub fn to_rgb565(color: &Color) -> Rgb565 {
+    match color {
+        Color::Black => Rgb565::BLACK,
+        Color::Red => Rgb565::RED,
+        Color::Green => Rgb565::GREEN,
+        Color::Blue => Rgb565::BLUE,
+        Color::Yellow => Rgb565::YELLOW,
+        Color::Magenta => Rgb565::MAGENTA,
+        Color::Cyan => Rgb565::CYAN,
+        Color::White => Rgb565::WHITE,
+    }
+}
+
+/// An RGB888 colour, e.g. one from a setting, as RGB565, dropping the low bits of each part.
+pub fn rgb565_from_rgb8(color: &rgb::RGB8) -> Rgb565 {
+    Rgb565::new(color.r >> 3, color.g >> 2, color.b >> 3)
 }
 
 pub trait DrawTargetResultExt<T> {

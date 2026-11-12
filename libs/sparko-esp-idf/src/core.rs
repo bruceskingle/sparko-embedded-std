@@ -11,7 +11,7 @@ use sparko_embedded_std::{
     tz::TimeZone,
 };
 
-use crate::mdns::MdnsResponder;
+use sparko_embedded_std::mdns::MdnsResponder;
 use crate::{
     Feature,
     esp32_platform::{Esp32Platform, Esp32PlatformInitializer},

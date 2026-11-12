@@ -1,12 +1,11 @@
-//! Attitude and Heading Reference System
+//! Attitude and Heading Reference System: the attitude and tilt worked out from an IMU's readings, whatever the chip,
+//! which a platform reads through the Imu trait, e.g. sparko-esp-idf's QMI8658.
  
 use std::{sync::{Arc, RwLock}, time::{Duration, Instant}};
 use ahrs::Madgwick;
 use ahrs::Ahrs;
 use log::info;
 use nalgebra::{UnitQuaternion, Vector3};
-
-pub mod qmi8658;
 
 pub const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
@@ -20,9 +19,11 @@ pub trait Gyro: Send + Sync {
 
 
 #[derive(Debug, Clone)]
+/// A reading from an IMU, which its platform's driver makes, e.g. sparko-esp-idf's QMI8658: the gyroscope's in degrees a
+/// second, and the accelerometer's in g.
 pub struct ImuReading {
-        gyroscope: Vector3<f32>,
-        accelerometer: Vector3<f32>,
+        pub gyroscope: Vector3<f32>,
+        pub accelerometer: Vector3<f32>,
 }
 
 #[derive(Debug, Clone)]

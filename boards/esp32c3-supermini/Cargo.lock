@@ -1767,6 +1767,7 @@ dependencies = [
  "log",
  "rgb",
  "serde_json",
+ "simple-dns",
 ]
 
 [[package]]
@@ -1810,7 +1811,6 @@ dependencies = [
  "rgb",
  "serde_json",
  "sha2",
- "simple-dns",
  "sparko-embedded-std",
  "url",
 ]
